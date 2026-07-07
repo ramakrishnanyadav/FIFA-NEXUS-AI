@@ -1,0 +1,133 @@
+import uuid
+import json
+from datetime import datetime
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+import redis.asyncio as aioredis
+from backend.app.core.database import get_db, get_redis_client, local_pubsub_bus
+from backend.app.models.models import OperationalEvent
+from backend.app.schemas.schemas import OperationalEventCreate, OperationalEventResponse
+import asyncio
+
+router = APIRouter()
+
+# SSE Generator reading from Redis Pub/Sub (with local memory fallback)
+async def event_generator(redis_client: aioredis.Redis):
+    from backend.app.core.database import USE_REDIS
+    pubsub = None
+    local_queue = None
+    if USE_REDIS:
+        try:
+            pubsub = redis_client.pubsub()
+            await pubsub.subscribe("events:stream")
+            yield "event: system\ndata: Connected to operational events stream\n\n"
+        except Exception:
+            local_queue = asyncio.Queue()
+            local_pubsub_bus.subscribe(local_queue)
+            yield "event: system\ndata: Connected to local operational events stream (Redis Offline Fallback)\n\n"
+    else:
+        local_queue = asyncio.Queue()
+        local_pubsub_bus.subscribe(local_queue)
+        yield "event: system\ndata: Connected to local operational events stream (Redis Offline Fallback)\n\n"
+
+    try:
+        while True:
+            if local_queue is not None:
+                try:
+                    message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
+                    yield f"event: operational_event\ndata: {message_data}\n\n"
+                    local_queue.task_done()
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+            else:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    yield f"event: operational_event\ndata: {message['data']}\n\n"
+                else:
+                    yield ": ping\n\n"
+    except Exception as e:
+        yield f"event: error\ndata: {str(e)}\n\n"
+    finally:
+        if pubsub is not None:
+            try:
+                await pubsub.unsubscribe("events:stream")
+                await pubsub.close()
+            except Exception:
+                pass
+        if local_queue is not None:
+            local_pubsub_bus.unsubscribe(local_queue)
+
+@router.get("/stream")
+async def stream_operational_events(
+    redis_client: aioredis.Redis = Depends(get_redis_client)
+):
+    return StreamingResponse(
+        event_generator(redis_client),
+        media_type="text/event-stream"
+    )
+
+
+@router.post("", response_model=OperationalEventResponse, status_code=status.HTTP_201_CREATED)
+async def create_manual_event(
+    event_in: OperationalEventCreate,
+    db: AsyncSession = Depends(get_db),
+    redis_client: aioredis.Redis = Depends(get_redis_client)
+):
+    try:
+        correlation_id = event_in.correlation_id or uuid.uuid4()
+        trace_id = event_in.trace_id or f"tr-{uuid.uuid4().hex[:8]}"
+        
+        event = OperationalEvent(
+            id=uuid.uuid4(),
+            zone_id=event_in.zone_id,
+            source=event_in.source,
+            event_type=event_in.event_type,
+            payload=event_in.payload,
+            received_at=datetime.utcnow(),
+            correlation_id=correlation_id,
+            trace_id=trace_id
+        )
+        db.add(event)
+        await db.commit()
+        await db.refresh(event)
+        
+        # Publish event notification via Redis Pub/Sub for SSE (with local fallback)
+        alert_msg = f"{event.event_type} reported by {event.source}: {json.dumps(event.payload)}"
+        try:
+            await redis_client.publish("events:stream", alert_msg)
+        except Exception:
+            local_pubsub_bus.publish(alert_msg)
+
+        
+        return event
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record operational event: {str(e)}"
+        )
+
+@router.get("", response_model=List[OperationalEventResponse])
+async def list_operational_events(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    event_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        query = select(OperationalEvent)
+        if event_type:
+            query = query.where(OperationalEvent.event_type == event_type)
+        query = query.order_by(OperationalEvent.received_at.desc()).limit(limit).offset(offset)
+        
+        result = await db.execute(query)
+        events = result.scalars().all()
+        return events
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch events: {str(e)}"
+        )
