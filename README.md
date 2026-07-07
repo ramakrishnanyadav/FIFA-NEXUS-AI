@@ -1,33 +1,57 @@
-# FIFA Nexus AI - Predictive Operational Intelligence Platform
+<div align="center">
 
-FIFA Nexus AI is an event-driven predictive operational intelligence platform built for the FIFA World Cup 2026. It proactively resolves spectator crowd congestion and stadium bottlenecks by combining real-time turnstile telemetry, LightGBM forecasting, LangGraph AI reasoning, and a zero-LLM deterministic policy validation safety gate.
+<h1>⚽ FIFA Nexus AI</h1>
+<h3>Predictive Operational Intelligence Platform · FIFA World Cup 2026</h3>
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white" />
+  <img src="https://img.shields.io/badge/LightGBM-ML-02569B?style=for-the-badge&logo=lightgbm&logoColor=white" />
+</p>
+<p>
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/LangGraph-Agent-2EA44F?style=for-the-badge&logo=langchain&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-7.0-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
+</p>
+<p>
+  <img src="https://img.shields.io/badge/Qdrant-VectorDB-FF6135?style=for-the-badge&logo=qdrant&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Pytest-7+-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white" />
+  <img src="https://img.shields.io/badge/SSE-Realtime-000000?style=for-the-badge&logo=socket.io&logoColor=white" />
+</p>
+
+<br/>
+
+> **FIFA Nexus AI** proactively resolves crowd congestion and stadium bottlenecks at the FIFA World Cup 2026 by combining real-time sensor telemetry, LightGBM crowd forecasting, LangGraph AI reasoning, and a deterministic policy safety gate — delivering human-supervised AI decisions in a closed-loop operations workflow.
+
+</div>
 
 ---
 
-## 🧭 Project Navigation Hub
+## 🧭 Documentation Hub
 
-*   **Engineering Core**:
-    *   [Why This Wins Case](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/WHY_THIS_WINS.md) (Core technical case, GenAI utility, and architectural novelties).
-    *   [Innovation & Design Architecture](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/innovation.md) (Structural design and predictive context boundaries).
-    *   [System Evaluation & Benchmarks](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/evaluation.md) (ML forecast baselines, RAG search precision, and AI schema error rates).
-    *   [Engineering Verification Walkthrough](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/walkthrough.md) (Latency benchmarks, optimization math, and the live storyboard demo script).
-*   **Accessibility Compliance**: Built-in keyboard navigation (`tabindex`, focus rings), live screen reader regions (`aria-live="polite"`), and multi-lingual UI translation (English, Spanish, French) implemented on the Operator Dashboard.
+| Document | Description |
+|---|---|
+| [WHY_THIS_WINS.md](docs/WHY_THIS_WINS.md) | Core technical case, GenAI utility, and architectural novelties |
+| [innovation.md](docs/innovation.md) | Structural design and predictive context boundaries |
+| [evaluation.md](docs/evaluation.md) | ML forecast baselines, safety gate validation, and benchmark methodology |
+| [walkthrough.md](docs/walkthrough.md) | Latency analysis, optimization engine rationale, and live demo storyboard |
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+## 🏗️ Architecture & Data Flow
 
-FIFA Nexus AI orchestrates predictive events through a decoupled, event-driven pipeline:
+FIFA Nexus AI orchestrates an event-driven pipeline from sensor to dispatch:
 
 ```mermaid
 graph TD
-    %% Telemetry Ingestion
     subgraph Ingestion [Ingestion Layer]
         Sensors[Turnstiles & Cameras] -->|REST POST /telemetry| IngestAPI[FastAPI Gateway]
         IngestAPI -->|Append Event| EventStore[(PostgreSQL Event Store)]
     end
 
-    %% State & Predictions
     subgraph Cache [Volatile Cache & Forecasts]
         IngestAPI -->|Update| RedisCache[(Redis: Canonical State)]
         RedisCache -->|Sliding-Window State| MLPredict[LightGBM Predictor]
@@ -35,22 +59,20 @@ graph TD
         MLPredict -->|Archived Snapshot| PostgresDB[(PostgreSQL Metrics)]
     end
 
-    %% Context & AI reasoning
     subgraph CoreAI [Reasoning & Safety Gates]
         RedisCache -->|Live Context| ContextBuilder[Context Builder]
-        QdrantDB[(Qdrant Vector DB)] -.->|Search SOPs & Maps| ContextBuilder
+        QdrantDB[(Qdrant Vector DB)] -.- |Search SOPs & Maps| ContextBuilder
         ContextBuilder -->|Payload| LangGraphAI[LangGraph AI Reasoner]
         LangGraphAI -->|Proposals| ConstraintScorer[Constraint Optimizer]
         ConstraintScorer -->|Ranked Options| PolicyGate[Rules Safety Gate]
         PolicyGate -->|Validated Recommendation| PostgresDB
     end
 
-    %% Dispatch & Loop
     subgraph GroundOps [Operations Dispatch]
         PostgresDB -->|SSE Feed /stream| Dashboard[Live Dashboard]
         Dashboard -->|Operator Approval| DispatchEngine[Task Dispatcher]
-        DispatchEngine -->|SSE Task Push| VolunteerApp[Volunteer App]
-        VolunteerApp -->|Mark Complete & Feedback| FeedbackLoop[Feedback Collector]
+        DispatchEngine -->|SSE Task Push| VolunteerApp[Volunteer Queue]
+        VolunteerApp -->|Mark Complete| FeedbackLoop[Feedback Collector]
         FeedbackLoop -->|Update Analytics| PostgresDB
     end
 
@@ -62,82 +84,140 @@ graph TD
 
 ---
 
-## 📂 Folder Structure
+## 🛠️ Technology Stack
+
+### Backend & API
+| Technology | Role |
+|---|---|
+| ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) | Async REST API gateway — handles telemetry ingestion, recommendations, tasks, and SSE streams |
+| ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white) | ORM layer with dual PostgreSQL/SQLite dialect support for graceful offline fallback |
+| ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white) | Primary production database; supports PostGIS geometry and JSONB columns |
+| ![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white) | Canonical zone state cache; replaced by in-process asyncio queue when offline |
+| ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white) | Strict input validation across all API request/response schemas |
+
+### Artificial Intelligence & Machine Learning
+| Technology | Role |
+|---|---|
+| ![OpenAI](https://img.shields.io/badge/OpenAI_GPT--4o-412991?logo=openai&logoColor=white) | LLM backend for adaptive operations strategy generation |
+| ![LangGraph](https://img.shields.io/badge/LangGraph_Agent-2EA44F?logo=langchain&logoColor=white) | Multi-step AI reasoning agent with SOP retrieval and fallback heuristics |
+| ![LightGBM](https://img.shields.io/badge/LightGBM-Predictor-02569B?logo=lightgbm&logoColor=white) | Gradient-boosted crowd occupancy forecasting trained on synthetic stadium telemetry |
+| ![Qdrant](https://img.shields.io/badge/Qdrant-VectorDB-FF6135?logo=qdrant&logoColor=white) | Vector search engine for SOP document retrieval (RAG pipeline) |
+
+### Safety & Validation Layer
+| Component | Role |
+|---|---|
+| **Constraint Optimizer** | Scores candidate actions by occupancy risk, accessibility cost, and safety penalties |
+| **Rules Safety Gate** | Deterministic policy engine — zero AI-generated actions pass dispatch without passing explicit policy checks |
+| **Idempotency Guard** | Blocks duplicate telemetry writes at identical timestamps |
+| **Incident Cooldown** | Database-backed 60-second cooldown preventing duplicate recommendation storms |
+
+### Infrastructure & Observability
+| Technology | Role |
+|---|---|
+| ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) | Compose stack for PostgreSQL/PostGIS, Redis, and Qdrant |
+| ![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?logo=pytest&logoColor=white) | Automated test suite — ML accuracy bounds, safety gate recall, and pipeline integration |
+| **Structured JSON Logging** | `correlation_id`-tagged log records across all services for distributed tracing |
+| **SSE Event Bus** | Real-time Server-Sent Events bridge for live dashboard feeds and volunteer task pushes |
+
+---
+
+## 📂 Project Structure
 
 ```
 fifa-nexus-ai/
-├── backend/                  # FastAPI REST + SSE Application & Dashboard
+├── backend/                     # FastAPI REST + SSE Application & Dashboard
 │   ├── app/
-│   │   ├── api/              # API Route Handlers (telemetry, events, recommendations, tasks, zones)
-│   │   ├── core/             # Database connection pooling, configurations, seeders
-│   │   ├── models/           # SQLAlchemy models representing normalized PostGIS schemas
-│   │   ├── schemas/          # Pydantic schemas representing request/responses
-│   │   ├── services/         # Context compiler, optimization engine, rule checks
-│   │   └── static/           # Interactive Operator Dashboard (HTML, Tailwind CSS, SSE Client)
-│   └── tests/                # Automated pytest suite
-├── ml/                       # Machine Learning Pipeline
-│   └── src/                  # LightGBM predictor stub & synthetic generator script
-├── docs/                     # Unified Documentation Repository (Benchmarks, Innovation, Case, Walkthrough)
-└── docker-compose.yml        # Docker compose stack for Postgres (with PostGIS), Redis, Qdrant
+│   │   ├── ai/                  # LangGraph agent & Qdrant vector search
+│   │   ├── api/                 # Route handlers: telemetry, events, recommendations, tasks, zones, assistant
+│   │   ├── core/                # Database pooling, config, structured logging, seed scripts
+│   │   ├── models/              # SQLAlchemy ORM models (PostGIS-compatible schemas)
+│   │   ├── schemas/             # Pydantic schemas for strict request/response validation
+│   │   ├── services/            # Context builder, optimizer, rules engine, predictor, recommender
+│   │   └── static/              # Operator Dashboard (HTML + SSE client)
+│   └── tests/                   # Pytest suite: evaluation benchmarks + pipeline integration
+├── ml/
+│   └── src/                     # LightGBM training pipeline & synthetic data generator
+├── docs/                        # Engineering documentation (benchmarks, innovation, walkthrough)
+├── docker-compose.yml           # Local stack: PostgreSQL/PostGIS + Redis + Qdrant
+├── pytest.ini                   # Test configuration with warning filters
+└── LIMITATIONS.md               # Honest scope boundaries and production delta notes
 ```
 
 ---
 
-## 🚀 Quickstart Guide
+## 🚀 Quickstart
 
-### Step 1: Start the Local Database Stack
-Launch PostgreSQL/PostGIS, Redis, and Qdrant containers:
+### Prerequisites
+- Python 3.11+
+- Docker & Docker Compose (for PostgreSQL, Redis, Qdrant)
+
+### Step 1 — Start Local Services
 ```bash
 docker-compose up -d
 ```
 
-### Step 2: Set up Environment & Install Dependencies
-Create a virtual environment and install packages using Python 3.11:
+### Step 2 — Install Dependencies
 ```bash
 py -3.11 -m venv venv
-.\venv\Scripts\activate
+.\venv\Scripts\activate         # Windows
+# source venv/bin/activate       # macOS / Linux
 pip install -r backend/requirements.txt
 ```
 
-### Step 3: Run the ML Inference Service
-Start the LightGBM prediction service on port 8001:
+### Step 3 — Start ML Inference Service
 ```bash
 python -m ml.src.inference
 ```
 
-### Step 4: Run the Backend & Dashboard Server
-Start the main FastAPI app on port 8000. On startup, it automatically creates the PostGIS tables and seeds lookups, stadium entities, zones, and mock accounts:
+### Step 4 — Start the Backend Server
 ```bash
 python -m uvicorn backend.app.main:app --reload --port 8000
 ```
+> On first launch, the server automatically creates all schema tables and seeds stadium zones, roles, and mock accounts.
 
-### Step 5: Open the Operations Dashboard
-Open your web browser and navigate to `http://localhost:8000`.
+### Step 5 — Open the Dashboard
+```
+http://localhost:8000
+```
 
 ---
 
-## 🧪 Automated Verification
+## 🧪 Running Tests
 
-To run all automated validations, calculations, and pipeline triggers:
 ```bash
+# Run full test suite
 pytest backend/tests/
-```
 
-To run the accuracy and safety validation evaluation tests displaying performance statistics:
-```bash
+# Run evaluation benchmarks (prints ML accuracy and safety recall)
 pytest -s backend/tests/test_evaluation.py
 ```
 
 ---
 
-## 🎯 Live Demo Presentation Storyboard
+## 🎯 Live Demo Walkthrough
 
-Use this timeline to demonstrate the entire Event-Driven Operational Intelligence pipeline:
+The dashboard tells a complete operations story in under 6 minutes:
 
-*   **[Minute 0] Monitoring Baseline**: Open the dashboard. You will see Hard Rock Stadium zones showing `0` occupancy (Green clear state on the map).
-*   **[Minute 1] Ingress Crowd Spike**: Click **"Run Ingress Simulation Wave"**. Turnstile camera sensors stream increasing counts at Gate A (480 ➔ 660 ➔ 864 ➔ 1020).
-*   **[Minute 2] ML Risk Alert**: The SSE log registers `CROWD_DENSITY_HIGH` as occupancy breaches 80%. Gate A turns **glowing red** on the map.
-*   **[Minute 3] AI Recommendation**: The Decision Support panel displays a recommendation: *"Deploy directional signage at Gate A and redirect traffic to Gate B."* Shows before/after impact (Wait time reduced from **18 min to 7 min**).
-*   **[Minute 4] Policy Check**: Confirm safety status says `VALIDATED` (confirming Gate B capacity was checked and is safe).
-*   **[Minute 5] Operator Approval**: Click **"Approve & Dispatch Tasks"**, sending tasks to the active Volunteer Queue.
-*   **[Minute 6] Resolution**: Click **"Mark Completed"** on the volunteer dispatch to close the loop and feed feedback into the database.
+| Step | Action | Observable Outcome |
+|---|---|---|
+| **1. Baseline** | Open dashboard | All 5 stadium zones show green nominal occupancy |
+| **2. Crowd Spike** | Click **Run Ingress Simulation Wave** | Gate A occupancy climbs: 480 → 660 → 864 → 1,020 |
+| **3. ML Alert** | Watch SSE log | `CROWD_DENSITY_HIGH` event fires; Gate A pulses red on the map |
+| **4. AI Recommendation** | Decision Support panel | AI generates: *"Deploy signage at Gate A, redirect to Gate B"* with wait-time reduction estimate |
+| **5. Evidence** | Click **View SOP Context** | RAG evidence document SOP-744 displayed in modal |
+| **6. Reject & Reroute** | Click **Reject** | AI re-reasons and generates alternative strategy with rationale |
+| **7. Approve** | Click **Approve & Dispatch** | Volunteer tasks appear in ground dispatch queue |
+| **8. Fan Query** | Ask chat: *"Where is the fastest entrance?"* | Assistant queries live zone data and returns lowest-occupancy gate |
+| **9. Resolve** | Click **Mark Completed** | Incident closes; feedback logged to database |
+
+---
+
+## ⚠️ Known Limitations
+
+See [LIMITATIONS.md](LIMITATIONS.md) for an honest assessment of scope boundaries, including offline fallback caveats, SQLite concurrency constraints, and production delta notes.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
