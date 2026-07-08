@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project source code
 COPY . .
 
-# Expose backend and ML service ports
+# Expose backend port (Railway injects $PORT; default 8000 for local Docker)
 EXPOSE 8000
-EXPOSE 8001
+
+# Production start command — no --reload, binds to $PORT for Railway compatibility
+CMD ["sh", "-c", "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
