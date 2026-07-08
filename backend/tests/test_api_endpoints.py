@@ -9,7 +9,8 @@ from backend.app.core.config import settings
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 # ---------------------------------------------------------------------------
 # GET /health
