@@ -51,6 +51,31 @@ def test_schema_contracts():
     finally:
         app.dependency_overrides.pop(get_db, None)
 
+    # 2. Recommendations Stats contract check
+    rec_mock = MagicMock()
+    rec_mock.reasoning_time_ms = 150.0
+    rec_mock.validation_status = "VALIDATED"
+    rec_mock.expected_impact = {"co2_saved_kg": 5.2}
+    rec_mock.model_version = "openai/gpt-4o"
+
+    db_execute_mock_rec = MagicMock()
+    db_execute_mock_rec.scalars().all.return_value = [rec_mock]
+    db_mock_rec = AsyncMock()
+    db_mock_rec.execute.return_value = db_execute_mock_rec
+
+    app.dependency_overrides[get_db] = lambda: db_mock_rec
+    try:
+        response = client.get("/api/v1/recommendations/stats")
+        assert response.status_code == status.HTTP_200_OK
+        stats_data = response.json()
+        assert stats_data["total_count"] == 1
+        assert stats_data["avg_reasoning_time_ms"] == 150.0
+        assert stats_data["validated_count"] == 1
+        assert stats_data["total_co2_saved_kg"] == 5.2
+        assert stats_data["provider_stats"]["openai/gpt-4o"] == 1
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
 
 # ---------------------------------------------------------------------------
 # 2. DATABASE TRANSACTION INTEGRITY & ROLLBACK TEST

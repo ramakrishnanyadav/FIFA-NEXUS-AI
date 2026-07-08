@@ -92,3 +92,22 @@ All write operations must include the API key header:
     "intent": "fan_navigation"
   }
   ```
+
+### 6. Recommendations Metrics & Analytics
+`GET /api/v1/recommendations/stats`
+- **Description**: Retrieve live statistics, validation pass rates, provider usage, and cumulative carbon savings.
+- **Response (200)**:
+  ```json
+  {
+    "total_count": 8,
+    "avg_reasoning_time_ms": 142.5,
+    "validated_count": 7,
+    "violation_count": 1,
+    "total_co2_saved_kg": 24.3,
+    "provider_stats": {
+      "openai/gpt-4o": 6,
+      "groq/llama-3.1-70b": 2
+    }
+  }
+  ```
+

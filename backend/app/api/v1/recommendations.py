@@ -37,6 +37,62 @@ async def list_recommendations(
             detail="Failed to fetch recommendations. Please try again."
         )
 
+@router.get("/stats", status_code=status.HTTP_200_OK)
+async def get_recommendation_stats(
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        query = select(Recommendation)
+        result = await db.execute(query)
+        recs = result.scalars().all()
+        
+        total_count = len(recs)
+        if total_count == 0:
+            return {
+                "total_count": 0,
+                "avg_reasoning_time_ms": 0.0,
+                "validated_count": 0,
+                "violation_count": 0,
+                "total_co2_saved_kg": 0.0,
+                "provider_stats": {}
+            }
+            
+        sum_time = 0.0
+        validated_count = 0
+        violation_count = 0
+        total_co2 = 0.0
+        provider_stats = {}
+        
+        for r in recs:
+            sum_time += r.reasoning_time_ms or 0.0
+            if r.validation_status == "VALIDATED":
+                validated_count += 1
+            else:
+                violation_count += 1
+                
+            # Parse co2_saved_kg
+            if r.expected_impact and isinstance(r.expected_impact, dict):
+                total_co2 += float(r.expected_impact.get("co2_saved_kg", 0.0))
+                
+            model = r.model_version or "Unknown Provider"
+            provider_stats[model] = provider_stats.get(model, 0) + 1
+            
+        return {
+            "total_count": total_count,
+            "avg_reasoning_time_ms": round(sum_time / total_count, 1),
+            "validated_count": validated_count,
+            "violation_count": violation_count,
+            "total_co2_saved_kg": round(total_co2, 2),
+            "provider_stats": provider_stats
+        }
+    except Exception as e:
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to fetch recommendation statistics: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to compile recommendation metrics."
+        )
+
 from backend.app.core.auth import verify_api_key
 
 @router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK)

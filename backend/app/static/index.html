@@ -244,6 +244,45 @@
                     </div>
                 </div>
             </div>
+
+            <!-- System & AI Operations Analytics Dashboard -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h2 class="text-base font-bold mb-4 flex items-center gap-2">
+                    <span>📊 System & AI Operations Analytics</span>
+                    <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded">Live Telemetry</span>
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-gray-800">
+                        <span class="text-gray-500 block text-xs uppercase font-bold mb-1">Total Decisions</span>
+                        <span class="text-2xl font-extrabold text-white font-mono" id="stats-total-decisions">0</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-gray-800">
+                        <span class="text-gray-500 block text-xs uppercase font-bold mb-1">Avg AI Latency</span>
+                        <span class="text-2xl font-extrabold text-blue-400 font-mono" id="stats-avg-latency">0ms</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-gray-800">
+                        <span class="text-gray-500 block text-xs uppercase font-bold mb-1">Safety Pass Rate</span>
+                        <span class="text-2xl font-extrabold text-emerald-400 font-mono" id="stats-pass-rate">100%</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-gray-800">
+                        <span class="text-gray-500 block text-xs uppercase font-bold mb-1">CO₂ Savings</span>
+                        <span class="text-2xl font-extrabold text-purple-400 font-mono" id="stats-co2-savings">0.0 kg</span>
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="bg-slate-900/40 p-3.5 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <span class="text-gray-400">Primary AI Inference Model</span>
+                        <span class="text-white font-semibold font-mono" id="stats-primary-llm">Groq / Fallback Heuristics</span>
+                    </div>
+                    <div class="bg-slate-900/40 p-3.5 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <span class="text-gray-400">Active Pipeline Failover Matrix</span>
+                        <span class="text-emerald-400 font-semibold flex items-center gap-1.5">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Auto Failover Armed
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Right 1 Column: Events, Recommendations, and Task Dispatches -->
@@ -424,8 +463,38 @@
                     redisStatusVal.innerText = "Offline (Bypassed)";
                     redisDot.className = "h-2 w-2 rounded-full bg-orange-500";
                 }
+                
+                // Trigger live analytics retrieval
+                await loadAnalyticsStats();
             } catch (err) {
                 console.error("Health check failed:", err);
+            }
+        }
+
+        // Fetch real-time AI & Pipeline Analytics
+        async function loadAnalyticsStats() {
+            try {
+                const res = await fetch('/api/v1/recommendations/stats');
+                if (!res.ok) return;
+                const stats = await res.json();
+                
+                document.getElementById('stats-total-decisions').innerText = stats.total_count;
+                document.getElementById('stats-avg-latency').innerText = `${stats.avg_reasoning_time_ms}ms`;
+                
+                const total = stats.total_count;
+                const passRate = total > 0 ? Math.round((stats.validated_count / total) * 100) : 100;
+                document.getElementById('stats-pass-rate').innerText = `${passRate}%`;
+                document.getElementById('stats-co2-savings').innerText = `${stats.total_co2_saved_kg} kg`;
+                
+                // Primary LLM display from stats models
+                const models = Object.keys(stats.provider_stats);
+                if (models.length > 0) {
+                    document.getElementById('stats-primary-llm').innerText = models.join(', ');
+                } else {
+                    document.getElementById('stats-primary-llm').innerText = "Heuristic Engine Fallback";
+                }
+            } catch (err) {
+                console.error("Failed to load analytics stats:", err);
             }
         }
 
@@ -920,6 +989,7 @@
                 if (data.status === 'success') {
                     loadRecommendation(recId);
                     setTimeout(loadActiveTasks, 1000);
+                    setTimeout(loadAnalyticsStats, 1000);
                 }
             } catch (err) {
                 console.error("Apply failed:", err);
