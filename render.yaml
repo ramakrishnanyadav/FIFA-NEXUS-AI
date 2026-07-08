@@ -1,0 +1,49 @@
+# render.yaml — FIFA Nexus AI · Render.com Deployment Blueprint
+# Deploy via: https://render.com/deploy (or connect GitHub repo manually)
+#
+# This blueprint configures:
+#   - One Web Service (Docker): runs FastAPI + ML inference together via start.sh
+#   - One PostgreSQL database (free tier, 1GB)
+#
+# NOTE: Redis is NOT listed here — FIFA Nexus AI has a built-in in-memory
+# fallback (LocalPubSubBus) that activates automatically when Redis is offline.
+# The SSE stream, telemetry pipeline, and recommendations all work without Redis.
+# Add a Redis service only if you want the full Redis-backed production path.
+
+services:
+  - type: web
+    name: fifa-nexus-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+
+    # Health check — Render pings this to decide if the deploy succeeded
+    healthCheckPath: /health
+
+    # Environment variables — pre-filled with demo defaults
+    # Render injects DATABASE_URL automatically from the linked database below.
+    envVars:
+      - key: API_KEY
+        value: fifanexus_api_key_2026
+      - key: JWT_SECRET_KEY
+        value: nexus_jwt_dev_secret_2026_changeme_in_production
+      - key: ML_INFERENCE_URL
+        value: http://localhost:8001
+      # LLM keys — leave blank to use local heuristic SOP fallback (no key needed for demo)
+      - key: OPENAI_API_KEY
+        value: ""
+      - key: GROQ_API_KEY
+        value: ""
+      # Database — auto-filled by Render when linked to the database below
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fifa-nexus-db
+          property: connectionString
+
+databases:
+  - name: fifa-nexus-db
+    plan: free
+    region: oregon
+    databaseName: fifanexus
+    user: fifanexus_admin

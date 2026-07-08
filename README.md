@@ -219,6 +219,23 @@ fifa-nexus-ai/
 
 ## 🚀 Quickstart
 
+### ☁️ Option A — Deploy to Render (Hosted, Free)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI)
+
+**Steps:**
+1. Click the button above → sign in to Render → click **Apply**
+2. Render auto-creates: Web Service (Docker) + PostgreSQL database
+3. Environment variables are pre-filled from `render.yaml` — **no manual edits needed**
+4. Wait ~3 minutes for the build → open the generated `.onrender.com` URL
+5. Enter API key **`fifanexus_api_key_2026`** in the dashboard lock icon
+
+> ⚠️ **Free tier cold start:** Render spins down the service after 15 minutes of inactivity. The first request after sleep takes ~30 seconds. Subsequent requests are instant.
+
+---
+
+### 💻 Option B — Local Development
+
 ### Prerequisites
 - Python 3.11+
 - Docker & Docker Compose (for PostgreSQL, Redis, Qdrant)

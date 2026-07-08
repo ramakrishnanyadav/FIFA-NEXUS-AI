@@ -15,8 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project source code
 COPY . .
 
-# Expose backend port (Railway injects $PORT; default 8000 for local Docker)
+# Make startup script executable
+RUN chmod +x start.sh
+
+# Expose backend port (Render / Railway inject $PORT; defaults to 8000 locally)
 EXPOSE 8000
 
-# Production start command — no --reload, binds to $PORT for Railway compatibility
-CMD ["sh", "-c", "python -m uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start both ML inference (background, port 8001) + FastAPI (foreground, $PORT)
+CMD ["./start.sh"]
