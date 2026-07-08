@@ -66,6 +66,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Apply TrustedHostMiddleware and Security Hardening Middlewares
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "testserver"]
+)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Set CORS origins with strict domain access control
 app.add_middleware(
     CORSMiddleware,
@@ -80,14 +88,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Apply TrustedHostMiddleware and Security Hardening Middlewares
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "testserver"]
-)
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
 
 # Include API Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)

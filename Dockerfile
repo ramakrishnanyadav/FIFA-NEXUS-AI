@@ -13,7 +13,9 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project source code
-COPY . .
+COPY backend ./backend
+COPY ml ./ml
+COPY start.sh ./
 
 # Make startup script executable and set ownership to non-root user
 RUN chmod +x start.sh \
