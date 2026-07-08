@@ -14,6 +14,6 @@ scikit-learn==1.6.0
 httpx==0.28.1
 pytest==8.3.4
 pytest-asyncio==0.23.7
-pytest-cov==5.0.0
+pytest-cov==7.1.0
 aiosqlite==0.22.1
 email-validator==2.2.0
