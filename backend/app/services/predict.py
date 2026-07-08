@@ -2,7 +2,6 @@ import httpx
 from typing import List
 from uuid import UUID
 from backend.app.core.config import settings
-
 from backend.app.core.logging import logger
 
 async def get_occupancy_prediction(
@@ -11,14 +10,14 @@ async def get_occupancy_prediction(
     safe_capacity: int,
     minutes_to_kickoff: int = 45
 ) -> dict:
-    url = f"http://localhost:8001/predict"
+    url = settings.ML_SERVICE_URL
     payload = {
         "zone_id": str(zone_id),
         "historical_occupancy_15m": historical_occupancy,
         "safe_capacity": safe_capacity,
         "minutes_to_match_kickoff": minutes_to_kickoff
     }
-    
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, timeout=2.0)
@@ -37,14 +36,14 @@ async def get_occupancy_prediction(
             extra={"correlation_id": str(zone_id)}
         )
 
-    
+
     # Graceful Fallback Engine (local heuristic in case service is down)
     current = historical_occupancy[-1] if historical_occupancy else 0
     trend = historical_occupancy[-1] - historical_occupancy[0] if len(historical_occupancy) > 1 else 0
-    
+
     pred_30m = max(0, int(current + (trend * 3.0) + 120))
-    risk_score = round(min(1.0, float(pred_30m) / float(safe_capacity)), 2)
-    
+    risk_score = round(min(1.0, float(pred_30m) / float(safe_capacity) if safe_capacity else 0.0), 2)
+
     return {
         "predicted_occupancy_30m": pred_30m,
         "risk_score": risk_score,

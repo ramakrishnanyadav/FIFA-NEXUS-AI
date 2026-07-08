@@ -45,7 +45,8 @@ A mature production-ready platform acknowledges its constraints, validation boun
 ## 4. Security & Authentication
 
 ### Current Scope
-*   The local slice provides basic CORS middleware (`allow_origins=["*"]`) and mock identity headers for testing convenience.
+*   **Service-Level API Key**: Write, recommendation, task, and assistant endpoints are authenticated using an `X-API-Key` request header.
+*   **CORS Configuration**: CORS middleware allows all origins (`"*"`) for development and sandbox deployment, with credential sharing disabled to ensure compliance with strict cross-origin policies.
 
 ### Real-World Production Roadmap
 *   **OAuth2 / OIDC**: Integration with enterprise Identity Providers (IDPs) such as Okta, Keycloak, or Azure AD.

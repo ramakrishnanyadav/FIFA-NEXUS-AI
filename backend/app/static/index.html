@@ -294,6 +294,20 @@
         let selectedZoneId = null;
         let activeRecommendationId = null;
         let currentLanguage = 'en';
+        
+        // Retrieve API key from URL parameter or local storage
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeApiKey = urlParams.get('api_key') || localStorage.getItem('fifanexus_api_key') || '';
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
 
         // Translation Dictionary
         const TRANSLATIONS = {
@@ -368,6 +382,31 @@
             }
         };
 
+        function showApiKeyModal() {
+            const modal = document.getElementById('api-key-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function submitApiKey() {
+            const input = document.getElementById('modal-api-key-input');
+            if (input) {
+                const key = input.value.trim();
+                if (key) {
+                    activeApiKey = key;
+                    localStorage.setItem('fifanexus_api_key', key);
+                    const modal = document.getElementById('api-key-modal');
+                    if (modal) modal.classList.add('hidden');
+                    // Initialize dashboard data
+                    checkSystemHealth();
+                    loadZones();
+                    setupSSE();
+                    loadActiveTasks();
+                } else {
+                    alert("Please enter a valid API Key.");
+                }
+            }
+        }
+
         // Check system health for header KPIs
         async function checkSystemHealth() {
             try {
@@ -430,12 +469,16 @@
 
         // Initialize and load base data on start
         window.addEventListener('DOMContentLoaded', () => {
-            checkSystemHealth();
-            loadZones();
-            setupSSE();
-            loadActiveTasks();
-            showIdleAIDashboard();
             changeLanguage(); // set initial values
+            showIdleAIDashboard();
+            if (!activeApiKey) {
+                showApiKeyModal();
+            } else {
+                checkSystemHealth();
+                loadZones();
+                setupSSE();
+                loadActiveTasks();
+            }
         });
 
         // Keyboard navigation helper for SVG map
@@ -559,8 +602,8 @@
                     zoneCard.innerHTML = `
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-sm text-white">${zone.name}</span>
-                                <span class="text-[9px] bg-slate-800/80 text-slate-400 border border-slate-700 px-1 py-0.5 rounded uppercase font-mono">${zone.zone_type}</span>
+                                <span class="font-bold text-sm text-white">${escapeHTML(zone.name)}</span>
+                                <span class="text-[9px] bg-slate-800/80 text-slate-400 border border-slate-700 px-1 py-0.5 rounded uppercase font-mono">${escapeHTML(zone.zone_type)}</span>
                             </div>
                             <div class="text-[10px] text-gray-400 mt-1 flex gap-2">
                                 <span>Cap: <strong class="text-gray-300 font-mono">${zone.safe_capacity}</strong></span>
@@ -642,11 +685,11 @@
                 logLine.className = `border-l-2 ${isBreach ? 'border-red-500 bg-red-950/10' : 'border-blue-500 bg-slate-900/20'} p-2 rounded text-[11px] font-mono leading-relaxed transition-all`;
                 logLine.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
-                        <div>${severityBadge} <span class="text-white font-semibold">${data.event_type}</span></div>
+                        <div>${severityBadge} <span class="text-white font-semibold">${escapeHTML(data.event_type)}</span></div>
                         <span class="text-gray-500 text-[10px]">${timeStr}</span>
                     </div>
                     <div class="text-gray-300 pl-2">
-                        Zone: <strong class="text-white">${data.zone_name}</strong> | Occupancy: <strong class="text-white">${data.current_occupancy}/${data.safe_capacity}</strong>
+                        Zone: <strong class="text-white">${escapeHTML(data.zone_name)}</strong> | Occupancy: <strong class="text-white">${data.current_occupancy}/${data.safe_capacity}</strong>
                     </div>
                 `;
                 log.appendChild(logLine);
@@ -777,7 +820,7 @@
                     <div class="glass-panel p-4 rounded-xl border border-indigo-500/30 text-left space-y-4" role="alert">
                         <div class="flex justify-between items-center">
                             <span class="text-xs bg-indigo-900/60 text-indigo-300 font-bold px-2.5 py-1 rounded border border-indigo-700/40">
-                                TARGET: ${rec.target_role}
+                                TARGET: ${escapeHTML(rec.target_role)}
                             </span>
                             <span class="text-[10px] bg-slate-900 border border-slate-700 text-slate-300 px-2 py-0.5 rounded font-semibold uppercase font-mono">
                                 Conf: ${Math.round(rec.confidence * 100)}%
@@ -786,7 +829,7 @@
 
                         <div>
                             <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Reasoning & Diagnostics</div>
-                            <p class="text-xs text-gray-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900 font-mono text-[11px] leading-relaxed">"${rec.reasoning_summary}"</p>
+                            <p class="text-xs text-gray-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900 font-mono text-[11px] leading-relaxed">"${escapeHTML(rec.reasoning_summary)}"</p>
                         </div>
 
                         <div>
@@ -809,7 +852,7 @@
                                 ${candidateActionsList.map(action => `
                                     <li class="flex items-start gap-1.5">
                                         <span class="text-indigo-400 mt-0.5">✔</span>
-                                        <span>${action}</span>
+                                        <span>${escapeHTML(action)}</span>
                                     </li>
                                 `).join('')}
                             </ul>
@@ -869,7 +912,8 @@
                 const res = await fetch(`/api/v1/recommendations/${recId}/apply`, {
                     method: 'POST',
                     headers: {
-                        'Idempotency-Key': crypto.randomUUID()
+                        'Idempotency-Key': crypto.randomUUID(),
+                        'X-API-Key': activeApiKey
                     }
                 });
                 const data = await res.json();
@@ -898,7 +942,8 @@
                 await fetch('/api/v1/telemetry', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-API-Key': activeApiKey
                     },
                     body: JSON.stringify(payload)
                 });
@@ -1061,7 +1106,7 @@
 
                 tasks.forEach(task => {
                     // Localize task text simulation
-                    let taskDetails = task.details;
+                    let taskDetails = escapeHTML(task.details);
                     if (currentLanguage === 'es') {
                         taskDetails = taskDetails.replace("Deploy directional signage", "Colocar señalización direccional")
                                                  .replace("Verbally guide fans", "Guiar verbalmente a los fanáticos");
@@ -1075,7 +1120,7 @@
                     card.innerHTML = `
                         <div class="flex justify-between items-start mb-2">
                             <span class="text-[10px] bg-blue-900/60 text-blue-300 font-bold px-2 py-0.5 rounded border border-blue-800/40">
-                                ROLE: ${task.assigned_role}
+                                ROLE: ${escapeHTML(task.assigned_role)}
                             </span>
                             <span id="task-status-badge-${task.id}" class="text-[10px] ${task.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'} font-semibold px-2 py-0.5 rounded border ${task.status === 'COMPLETED' ? 'border-emerald-800' : 'border-amber-800'}">
                                 ${task.status}
@@ -1103,7 +1148,8 @@
                 const taskRes = await fetch(`/api/v1/tasks/${taskId}`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-API-Key': activeApiKey
                     },
                     body: JSON.stringify({
                         status: 'COMPLETED'
@@ -1115,7 +1161,8 @@
                         await fetch(`/api/v1/recommendations/${activeRecommendationId}/feedback`, {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-API-Key': activeApiKey
                             },
                             body: JSON.stringify({
                                 accepted: true,
@@ -1180,6 +1227,7 @@
             a.download = `stadium_ops_event_log_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
             a.click();
             URL.revokeObjectURL(url);
+        }
         // 12. Toggle AI Chat Window
         function toggleChatWindow() {
             const chatWindow = document.getElementById('ai-chat-window');
@@ -1210,7 +1258,7 @@
             userBubble.className = "flex gap-2 items-start justify-end";
             userBubble.innerHTML = `
                 <div class="bg-indigo-600/90 text-white p-2.5 rounded-2xl rounded-tr-none max-w-[85%]">
-                    ${message}
+                    ${escapeHTML(message)}
                 </div>
             `;
             container.appendChild(userBubble);
@@ -1232,7 +1280,8 @@
                 const res = await fetch('/api/v1/assistant/chat', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-API-Key': activeApiKey
                     },
                     body: JSON.stringify({ message: message })
                 });
@@ -1248,7 +1297,7 @@
                 assistantBubble.className = "flex gap-2 items-start";
                 assistantBubble.innerHTML = `
                     <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-2xl rounded-tl-none max-w-[85%] text-gray-200">
-                        ${data.response.replace(/\n/g, '<br>')}
+                        ${escapeHTML(data.response).replace(/\n/g, '<br>')}
                     </div>
                 `;
                 container.appendChild(assistantBubble);
@@ -1318,6 +1367,29 @@
                 ⚡ Send
             </button>
         </form>
+    <!-- API Key Input Modal Overlay -->
+    <div id="api-key-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 hidden">
+        <div class="glass-panel max-w-md w-full mx-4 p-6 rounded-2xl border border-indigo-500/20 shadow-2xl flex flex-col space-y-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🔑</span>
+                <div>
+                    <h2 class="text-lg font-bold text-white leading-tight">Operator Authentication Required</h2>
+                    <p class="text-xs text-gray-400">FIFA Nexus AI Gatekeeper</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-300 leading-relaxed">
+                Please enter your operator `X-API-Key` to establish connection with the real-time operational feeds.
+            </p>
+            <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="modal-api-key-input">X-API-Key</label>
+                <input type="password" id="modal-api-key-input" placeholder="e.g. fifanexus_api_key_..." class="w-full bg-brand-card border border-gray-700 text-sm text-white px-3 py-2 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div class="flex justify-end gap-2 text-xs font-semibold pt-2">
+                <button onclick="submitApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl transition-all focus:outline-none">
+                    🔑 Authenticate
+                </button>
+            </div>
+        </div>
     </div>
 </body>
 </html>

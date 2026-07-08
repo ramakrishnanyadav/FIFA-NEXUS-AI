@@ -24,7 +24,7 @@ Ingressed Events ➔ Redis State Cache ➔ LightGBM Prediction ➔ Context Assem
 
 ## 3. Why Generative AI?
 While forecasting is deterministic, **translating forecasted crises into safe human action** requires reasoning:
-*   **Reasoning Over Unstructured Context**: Generative AI (LangGraph) processes heterogeneous inputs—live occupancy numbers, forecasted curves, spatial map layouts, and unstructured SOP documents—to synthesize a coherent operational plan.
+*   **Reasoning Over Unstructured Context**: Generative AI (OpenAI GPT-4o-mini) processes heterogeneous inputs—live occupancy numbers, forecasted curves, spatial map layouts, and unstructured SOP documents—to synthesize a coherent operational plan.
 *   **Role-Specific Customization**: Automatically tailors instruction details and tones for different target audiences:
     *   *Operators*: Summarized evidence, before/after impact calculations, and risk metrics.
     *   *Volunteers*: Direct verbal and physical instructions (e.g. redirecting fans, placing signposts).

@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.database import get_db
 from backend.app.models.models import Zone, Task
 from sqlalchemy import select
-from typing import Dict, Any
 
 router = APIRouter()
 
@@ -15,10 +14,16 @@ class ChatResponse(BaseModel):
     response: str
     intent: str
 
+from backend.app.core.auth import verify_api_key
+
 @router.post("/chat", response_model=ChatResponse)
-async def chat_assistant(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat_assistant(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_api_key)
+):
     msg_lower = request.message.lower()
-    
+
     # Simple semantic intents matching zones, dispatches, fallback guidelines
     if "gate a" in msg_lower:
         # Check active status of Gate A from DB
@@ -37,7 +42,7 @@ async def chat_assistant(request: ChatRequest, db: AsyncSession = Depends(get_db
                     intent="zone_status"
                 )
         return ChatResponse(response="Gate A is currently operating within nominal limits.", intent="zone_status")
-        
+
     elif "entrance" in msg_lower or "fastest" in msg_lower or "best gate" in msg_lower or "route" in msg_lower:
         # Query database zone states to locate the lowest occupancy zone
         q = await db.execute(select(Zone).order_by(Zone.current_occupancy.asc()))
@@ -66,19 +71,19 @@ async def chat_assistant(request: ChatRequest, db: AsyncSession = Depends(get_db
             response="All active volunteer dispatch tasks are completed. Operational response stands at 100% capacity.",
             intent="task_status"
         )
-        
+
     elif "fallback" in msg_lower or "offline" in msg_lower or "sop" in msg_lower:
         return ChatResponse(
             response="In local offline mode, the system automatically redirects telemetry to SQLite and switches from Redis Pub/Sub to an in-memory Queue registry, continuing event routing without timeouts.",
             intent="system_info"
         )
-        
+
     elif "sustainability" in msg_lower or "carbon" in msg_lower or "green" in msg_lower:
         return ChatResponse(
             response="Stadium operations optimize transit paths and reduce bottlenecks to lower spectator idle wait times. For every minute of wait-time reduced, the system saves approximately 0.05 kg of CO2 per 100 fans, reducing the venue's collective carbon footprint.",
             intent="sustainability_info"
         )
-        
+
     # Default fallback response
     return ChatResponse(
         response="I am the FIFA Nexus AI Operational Assistant. I monitor real-time crowd densities, predictive bottlenecks, volunteer task logs, and safety gate parameters. You can ask me about zone statuses (e.g. 'Gate A status'), active dispatches, local fallback settings, or sustainability metrics.",

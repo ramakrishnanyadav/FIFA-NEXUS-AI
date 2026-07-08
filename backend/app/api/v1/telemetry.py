@@ -7,11 +7,14 @@ from backend.app.services.telemetry import process_telemetry_input
 
 router = APIRouter()
 
+from backend.app.core.auth import verify_api_key
+
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
 async def ingest_telemetry(
     telemetry: TelemetryCreate,
     db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client)
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+    _: str = Depends(verify_api_key)
 ):
     try:
         result = await process_telemetry_input(db, redis_client, telemetry)
@@ -19,7 +22,9 @@ async def ingest_telemetry(
             raise HTTPException(status_code=404, detail=result.get("message"))
         return result
     except Exception as e:
+        from backend.app.core.logging import logger
+        logger.error(f"Telemetry ingestion error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Telemetry ingestion failed: {str(e)}"
+            detail="Internal server error during telemetry ingestion. Please contact operations support."
         )

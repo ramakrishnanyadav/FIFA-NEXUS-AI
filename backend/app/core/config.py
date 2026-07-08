@@ -5,10 +5,10 @@ class Settings(BaseSettings):
     # API Configurations
     PROJECT_NAME: str = "FIFA Nexus AI"
     API_V1_STR: str = "/api/v1"
-    
+
     # PostgreSQL Configuration
     POSTGRES_USER: str = Field(default="admin")
-    POSTGRES_PASSWORD: str = Field(default="postgres_pass")
+    POSTGRES_PASSWORD: str = Field(default="")  # Set via POSTGRES_PASSWORD env var
     POSTGRES_DB: str = Field(default="fifanexus")
     POSTGRES_HOST: str = Field(default="localhost")
     POSTGRES_PORT: int = Field(default=5432)
@@ -21,13 +21,25 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = Field(default="localhost")
     QDRANT_PORT: int = Field(default=6333)
 
-    # Security Configuration
-    JWT_SECRET_KEY: str = Field(default="super_secret_jwt_key_change_in_production_1234567890")
-    JWT_ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=120)
+    # ML Inference Service Configuration
+    ML_SERVICE_URL: str = Field(default="http://localhost:8001/predict")
 
     # LLM Provider Configuration
-    OPENAI_API_KEY: str = Field(default="mock-key-for-now")
+    # Supports OpenAI, Groq, and Featherless — all OpenAI-compatible.
+    # Priority: OPENAI_API_KEY > GROQ_API_KEY > FEATHERLESS_API_KEY > heuristic fallback.
+    OPENAI_API_KEY: str = Field(default="")       # Set via OPENAI_API_KEY env var
+    GROQ_API_KEY: str = Field(default="")         # Set via GROQ_API_KEY env var
+    GROQ_BASE_URL: str = Field(default="https://api.groq.com/openai/v1")
+    GROQ_MODEL: str = Field(default="llama-3.3-70b-versatile")
+    FEATHERLESS_API_KEY: str = Field(default="")  # Set via FEATHERLESS_API_KEY env var
+    FEATHERLESS_BASE_URL: str = Field(default="https://api.featherless.ai/v1")
+    FEATHERLESS_MODEL: str = Field(default="meta-llama/Llama-3.3-70B-Instruct")
+
+    # Security Configuration
+    JWT_SECRET_KEY: str = Field(default="")  # Set via JWT_SECRET_KEY env var — required for token signing
+    JWT_ALGORITHM: str = Field(default="HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=120)
+    API_KEY: str = Field(default="")  # Set via API_KEY env var for API protection
 
     @property
     def DATABASE_URL(self) -> str:

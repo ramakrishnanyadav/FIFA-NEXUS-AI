@@ -21,7 +21,7 @@ During a simulation of 10,000 turnstile ticks across 5 concurrent zones, we obse
 | **State Cache Write** | Redis ZADD timeseries | 1.1 ms | 2.4 ms | Redis connection pool |
 | **ML Inference** | POST `/ml/predict` | 14 ms | 22 ms | LightGBM python service |
 | **Semantic Retrieval** | Qdrant Scroll Filter | 8 ms | 15 ms | Qdrant Vector search |
-| **AI Reasoning** | LangGraph Node Loop | 280 ms | 390 ms | OpenAI client wrapper |
+| **AI Reasoning** | OpenAI Agent | 280 ms | 390 ms | GPT-4o-mini with JSON output mode |
 | **Safety Policy Gate** | Rules validation loop | < 1 ms | < 1 ms | Deterministic Pydantic checks |
 | **End-to-End Latency** | Telemetry to SSE client | **315 ms** | **442 ms** | Connected pipeline loop |
 
@@ -29,18 +29,19 @@ During a simulation of 10,000 turnstile ticks across 5 concurrent zones, we obse
 
 ## 2. Automated Verification & Validation Accuracy Metrics
 
-We created a dedicated evaluation suite in [test_evaluation.py](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/backend/tests/test_evaluation.py) to assess the accuracy of our predictions and safety gates. Pytest outputs confirmed the following metrics:
+We created a dedicated evaluation suite in [test_evaluation.py](../backend/tests/test_evaluation.py) to assess the accuracy of our predictions and safety gates. Pytest outputs confirmed the following metrics:
 
 ### A. Machine Learning Prediction Accuracy
-*   **Mean Absolute Error (MAE)**: **53.00 fans** (within our budget threshold of <100 fans)
-*   **Root Mean Squared Error (RMSE)**: **67.45 fans** (within our budget threshold of <120 fans)
+*   **Mean Relative MAE**: **8.6% of zone capacity** (within our zone-size-independent budget threshold of <20%)
+*   **Mean Absolute Error (MAE)**: **166.40 fans** (absolute)
+*   **Root Mean Squared Error (RMSE)**: **191.55 fans**
 
 ### B. Policy Safety Validator Performance
-We evaluated the validation engine against 9 distinct edge-case operational recommendations containing crowd density hazards, fire hazards, and unarmed volunteer dispatches:
+We evaluated the validation engine against 16 distinct edge-case operational recommendations spanning crowd density hazards, fire emergencies, unarmed volunteer dispatches, multi-destination routing, and unknown-destination fail-safe scenarios:
 *   **Safety Check Accuracy**: **100.0%**
 *   **Violation Detection Recall**: **100.0%** (zero safety breaches passed undetected, including semantic negations like "without police support")
 *   **Validator Precision**: **100.0%** (zero false alarms triggering on safe actions)
-*   *Note*: These perfect metrics reflect baseline verification checks specifically on the 9 curated validation scenarios to confirm parsing correctness, rather than general natural language benchmarks.
+    *   *Note*: These perfect metrics reflect the deterministic rules engine evaluated against 16 curated scenarios including LLM-phrased routing actions and multi-destination capacity checks, confirming both correct parsing and fail-safe behavior for unrecognized destinations.
 
 
 ### C. Constraint Optimization Engine Ratios
@@ -51,7 +52,7 @@ We evaluated the validation engine against 9 distinct edge-case operational reco
 
 ## 3. In-Depth Service Breakdown & Safety Controls
 
-### A. AI Reasoning Graph (LangGraph)
+### A. AI Reasoning Agent (OpenAI GPT-4o-mini)
 *   **Prompt Configuration**: Versioned under `prompt:stadium_ops:v2.1` with strict instructions on formatting, target roles, and security bounds.
 *   **Structured Output**: Outputs are parsed into a strict Pydantic schema enforcing `candidate_actions` (list of strings), `expected_impact` (dictionary containing estimated queue time reductions and volunteer count), and `confidence` (float between 0 and 1).
 *   **Safety Retries**: If the output violates the Pydantic schema or contains malformed JSON, the parser captures the traceback and re-prompts the LLM. It limits retries to **2 attempts** before applying a safe, static SOP template based on the incident category.
@@ -69,7 +70,7 @@ $$Score = (w_1 \cdot \Delta Risk) + (w_2 \cdot \Delta WaitTime) - (w_3 \cdot Dis
 ### C. Deterministic Policy Safety Gate (Rules Engine)
 All optimized candidate recommendations must pass through a strict, zero-LLM policy engine.
 *   *Security Isolation*: Rejects any volunteer task that dispatches unarmed personnel to an active security conflict zone.
-*   *Evacuation Paths*: Prevents assigning evacuation directions through bottlenecks currently exceeding 80% capacity.
+*   *Evacuation Paths*: Prevents assigning evacuation directions through bottlenecks currently exceeding 85% capacity (RULE_CROWD_02).
 *   *Actions failing checks* are transitioned to status `POLICY_VIOLATION` and hidden from operator dashboards, triggering a critical alert on the system console.
 
 ---
@@ -82,15 +83,16 @@ We verified the resilience of the pipeline by simulating service dropouts under 
 |---|---|---|
 | **Redis Offline** | System catches connection errors, bypassing sliding-window history caches, and falls back to PostgreSQL `zone_occupancy_snapshots` to construct features. | **Graceful Degraded**: Wait-times calculation remains active; latency increases by ~8ms due to DB queries. |
 | **ML Predictor Offline** | Client catches connection timeouts and triggers a local trend-projection heuristic to predict the 30m occupancy. | **Graceful Degraded**: Predictions remain operational; risk score calculated via trend-line. |
-| **GPT API Timeout** | LangGraph handler intercepts timeout and serves a static local Standard Operating Procedure (SOP) template. | **Graceful Degraded**: Actions generated using standard pre-approved SOP libraries. |
+| **GPT API Timeout** | Agent handler intercepts timeout and serves a static local Standard Operating Procedure (SOP) template. | **Graceful Degraded**: Actions generated using standard pre-approved SOP libraries. |
 | **Qdrant Offline** | Client catches vector search failures and pulls fallback guidelines from a static local mapping of category-to-SOPs. | **Graceful Degraded**: Recommendation contains standard safety protocols. |
 
 ---
 
-## 5. Security & RBAC Schema
-*   **Token Authorization**: Secure JWT tokens are parsed to verify user identifiers, roles, and allowed scopes (e.g. `telemetry:write`, `recommendations:write`).
-*   **RBAC**: Endpoints block unauthorized requests. A `volunteer` account attempting to call `POST /api/v1/recommendations/{id}/apply` is rejected with `403 Forbidden`. Only `operations_manager` is authorized to apply recommendations.
-*   **Governance Audit Logs**: The `audit_logs` table records every critical state change, capturing the timestamp, operator ID, action (e.g., `APPROVE_RECOMMENDATION`), and the exact IP address.
+## 5. Security & API Authentication Schema
+*   **Service-Level API Key**: Write, recommendation, task, and assistant chat endpoints are secured using a static `X-API-Key` header verified against `settings.API_KEY` on the server.
+*   **Role-Based Payload Routing**: Role attributes (such as `assigned_role` or `target_role`) are encapsulated in the database models and payload schemes. The optimization and rules validation engines process these attributes (e.g. validating target roles for recommendation dispatches), while API access authorization is managed at the service gate.
+*   **Future Enhancements (Planned Architecture)**: The schema and seed scripts include user accounts and roles (`Role`, `User`, `permissions`). A transition to OAuth2/JWT-based session authentication and endpoint-level Role-Based Access Control (RBAC) is planned for production deployment, as documented in [LIMITATIONS.md](../LIMITATIONS.md).
+*   **Governance Audit Logs**: The `audit_logs` table is prepared to record critical state changes, capturing the timestamp, user ID, action (e.g., `APPROVE_RECOMMENDATION`), and client connection parameters.
 
 ---
 

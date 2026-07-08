@@ -1,3 +1,5 @@
+
+
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -6,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import redis.asyncio as aioredis
 import json
-from backend.app.core.database import get_db, get_redis_client, local_pubsub_bus, USE_REDIS
-from backend.app.models.models import Recommendation, Task, OperationalEvent
-from backend.app.schemas.schemas import RecommendationResponse, RecommendationFeedback, TaskResponse
+from backend.app.core.database import get_db, get_redis_client, USE_REDIS
+from backend.app.models.models import Recommendation, Task
+from backend.app.schemas.schemas import RecommendationResponse, RecommendationFeedback
 
 router = APIRouter()
 
@@ -24,22 +26,27 @@ async def list_recommendations(
         if trigger_event_id:
             query = query.where(Recommendation.trigger_event_id == trigger_event_id)
         query = query.order_by(Recommendation.generated_at.desc()).limit(limit).offset(offset)
-        
+
         result = await db.execute(query)
         recommendations = result.scalars().all()
         return recommendations
     except Exception as e:
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to fetch recommendations: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch recommendations: {str(e)}"
+            detail="Failed to fetch recommendations. Please try again."
         )
+
+from backend.app.core.auth import verify_api_key
 
 @router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK)
 async def apply_recommendation(
     recommendation_id: uuid.UUID,
     idempotency_key: Optional[uuid.UUID] = Header(None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client)
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+    _: str = Depends(verify_api_key)
 ):
     # 1. Idempotency Check (with Redis offline fallback)
     idemp_redis_key = None
@@ -49,8 +56,9 @@ async def apply_recommendation(
             cached_val = await redis_client.get(idemp_redis_key)
             if cached_val:
                 return json.loads(cached_val)
-        except Exception:
-            pass
+        except Exception as e:
+            from backend.app.core.logging import logger
+            logger.warning(f"Idempotency cache read failed: {e}")
 
 
     try:
@@ -59,15 +67,21 @@ async def apply_recommendation(
         rec = result.scalars().first()
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
-        
+
         if rec.validation_status == "APPROVED":
             return {"status": "already_applied", "recommendation_id": str(recommendation_id)}
-            
+
+        if rec.validation_status == "POLICY_VIOLATION":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot apply recommendation with validation_status=POLICY_VIOLATION due to active safety policy breaches."
+            )
+
         # 3. Transition State to APPROVED & DISPATCHED
         rec.validation_status = "APPROVED"
         rec.accepted = True
         rec.applied = True
-        
+
         # 4. Generate & Dispatch Tasks based on Candidate Actions
         created_tasks = []
         for action in rec.candidate_actions:
@@ -84,7 +98,7 @@ async def apply_recommendation(
             )
             db.add(task)
             created_tasks.append(task_id)
-            
+
             # Publish task notifications to Redis channel for SSE (with fallback)
             task_alert = {
                 "id": str(task_id),
@@ -92,20 +106,25 @@ async def apply_recommendation(
                 "role": task.assigned_role,
                 "status": "DISPATCHED"
             }
+            from backend.app.core.database import local_pubsub_bus
             if USE_REDIS:
                 try:
                     await redis_client.publish("tasks:stream", json.dumps(task_alert))
-                except Exception:
-                    pass
-            
+                except Exception as e:
+                    from backend.app.core.logging import logger
+                    logger.warning(f"Failed to publish task stream alert to Redis: {e}")
+                    local_pubsub_bus.publish(json.dumps(task_alert))
+            else:
+                local_pubsub_bus.publish(json.dumps(task_alert))
+
         await db.commit()
-        
+
         response_payload = {
             "status": "success",
             "recommendation_id": str(recommendation_id),
             "dispatched_tasks": [str(t_id) for t_id in created_tasks]
         }
-        
+
         # Cache for Idempotency (24 hours TTL)
         if idempotency_key and idemp_redis_key and USE_REDIS:
             try:
@@ -114,45 +133,49 @@ async def apply_recommendation(
                     86400,
                     json.dumps(response_payload)
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                from backend.app.core.logging import logger
+                logger.warning(f"Idempotency cache write failed: {e}")
 
 
-            
+
         return response_payload
-        
+
     except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to apply recommendation {recommendation_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to apply recommendation: {str(e)}"
+            detail="Failed to apply recommendation. Please try again."
         )
 
 @router.post("/{recommendation_id}/feedback", status_code=status.HTTP_200_OK)
 async def submit_feedback(
     recommendation_id: uuid.UUID,
     feedback: RecommendationFeedback,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_api_key)
 ):
     try:
         result = await db.execute(select(Recommendation).where(Recommendation.id == recommendation_id))
         rec = result.scalars().first()
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
-            
+
         # Update feedback loop fields
         rec.accepted = feedback.accepted
         rec.applied = feedback.applied
         rec.feedback_rating = feedback.feedback_rating
         rec.feedback_comments = feedback.feedback_comments
-        
+
         # Mocking an effectiveness score logic for the vertical slice:
         # High rating + accepted gives high effectiveness
         rec.effectiveness_score = float(feedback.feedback_rating) / 5.0 if feedback.accepted else 0.0
         rec.validation_status = "EVALUATED"
-        
+
         await db.commit()
         return {
             "status": "success",
@@ -163,7 +186,9 @@ async def submit_feedback(
         raise
     except Exception as e:
         await db.rollback()
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to record feedback for recommendation {recommendation_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to record feedback: {str(e)}"
+            detail="Failed to record feedback. Please try again."
         )

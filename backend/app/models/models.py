@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 from sqlalchemy import (
     Column,
     String,
@@ -10,11 +9,10 @@ from sqlalchemy import (
     ForeignKey,
     Table,
     Text,
-    Double,
     UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from backend.app.core.database import Base, USE_SQLITE
 
@@ -103,6 +101,7 @@ class Zone(Base):
     name = Column(String(100), nullable=False)
     zone_type = Column(String(50), nullable=False) # GATE, CONCOURSE, STANDS, PARKING, TRANSPORT_HUB
     safe_capacity = Column(Integer, nullable=False)
+    current_occupancy = Column(Integer, default=0, nullable=False)
     boundary = Column(ZoneBoundaryType, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -110,16 +109,15 @@ class Zone(Base):
     stadium = relationship("Stadium", back_populates="zones")
     occupancy_snapshots = relationship("ZoneOccupancySnapshot", back_populates="zone")
     operational_events = relationship("OperationalEvent", back_populates="zone")
-    predictions = relationship("Prediction", back_populates="zone")
 
 
 class ZoneOccupancySnapshot(Base):
     __tablename__ = "zone_occupancy_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=False)
+    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=False, index=True)
     occupancy = Column(Integer, nullable=False)
-    recorded_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    recorded_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
 
     # Relationships
     zone = relationship("Zone", back_populates="occupancy_snapshots")
@@ -129,11 +127,11 @@ class OperationalEvent(Base):
     __tablename__ = "operational_events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=True)
+    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=True, index=True)
     source = Column(String(100), nullable=False)
-    event_type = Column(String(100), nullable=False)
+    event_type = Column(String(100), nullable=False, index=True)
     payload = Column(JSONColumnType, nullable=False)
-    received_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    received_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
     correlation_id = Column(UUID(as_uuid=True), nullable=False)
     trace_id = Column(String(100), nullable=True)
 
@@ -141,26 +139,6 @@ class OperationalEvent(Base):
     zone = relationship("Zone", back_populates="operational_events")
     recommendations = relationship("Recommendation", back_populates="trigger_event")
 
-
-class Prediction(Base):
-    __tablename__ = "predictions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, index=True)
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=False)
-    target_timestamp = Column(DateTime(timezone=True), nullable=False, primary_key=True) # Part of partition key if enabled
-    predicted_occupancy = Column(Integer, nullable=False)
-    risk_score = Column(Float, nullable=False)
-    prediction_window_minutes = Column(Integer, nullable=False)
-    prediction_type = Column(String(50), nullable=False)
-    confidence_interval_low = Column(Float, nullable=True)
-    confidence_interval_high = Column(Float, nullable=True)
-    input_snapshot_hash = Column(String(100), nullable=False)
-    model_version = Column(String(50), nullable=False)
-    training_dataset_version = Column(String(50), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-
-    # Relationships
-    zone = relationship("Zone", back_populates="predictions")
 
 
 class Recommendation(Base):

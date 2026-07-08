@@ -18,15 +18,15 @@ async def generate_and_validate_recommendations(
     category = event.payload.get("category", "CROWD") if event.payload else "CROWD"
     if event.event_type == "CROWD_DENSITY_HIGH":
         category = "CROWD"
-        
+
     context = await build_operational_context(db, redis_client, event.zone_id, category)
-    
+
     # 2. Run AI reasoning agent to generate candidate actions and measure time
     import time
     start_time = time.perf_counter()
     ai_output = await run_reasoning_agent(context, target_role)
     reasoning_time_ms = (time.perf_counter() - start_time) * 1000.0
-    
+
     # 3. Score & filter candidate actions using the optimization engine
     optim_data = optimize_candidate_actions(
         candidate_actions=ai_output["candidate_actions"],
@@ -34,13 +34,25 @@ async def generate_and_validate_recommendations(
         safe_capacity=context["safe_capacity"],
         congestion_risk=context["congestion_risk_score"]
     )
-    
+
     # 4. Enforce strict safety policy rules
+    # Build a zone_ratios dict: {zone_name_lower -> occupancy_ratio} for all zones in the stadium
+    from sqlalchemy.future import select as sa_select
+    from backend.app.models.models import Zone
+    all_zones_res = await db.execute(sa_select(Zone).where(Zone.deleted_at.is_(None)))
+    all_zones = all_zones_res.scalars().all()
+    zone_ratios = {
+        z.name.lower(): (z.current_occupancy / z.safe_capacity) if z.safe_capacity else 0.0
+        for z in all_zones
+    }
+    source_zone_name = context.get("zone_name", "")
     validation_status, policy_flags = validate_policy_rules(
         candidate_actions=optim_data["actions"],
-        policy_flags=optim_data["policy_flags"]
+        policy_flags=optim_data["policy_flags"],
+        source_zone_name=source_zone_name,
+        zone_ratios=zone_ratios
     )
-    
+
     # Merge co2_saved_kg into expected_impact dict for database persistence
     expected_impact = dict(ai_output["expected_impact"])
     expected_impact["co2_saved_kg"] = optim_data["co2_saved_kg"]
@@ -62,9 +74,9 @@ async def generate_and_validate_recommendations(
         reasoning_time_ms=reasoning_time_ms,
         generated_at=datetime.utcnow()
     )
-    
+
     db.add(recommendation)
     await db.commit()
     await db.refresh(recommendation)
-    
+
     return recommendation

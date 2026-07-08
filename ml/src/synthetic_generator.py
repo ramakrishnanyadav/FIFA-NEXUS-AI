@@ -1,6 +1,5 @@
 import time
 import requests
-import random
 import sys
 from datetime import datetime
 

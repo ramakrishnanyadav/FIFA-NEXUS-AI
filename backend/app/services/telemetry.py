@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import redis.asyncio as aioredis
@@ -19,21 +18,19 @@ async def process_telemetry_input(
     if not zone:
         return {"status": "error", "message": f"Zone {telemetry.zone_id} not found."}
 
+    # Update dynamic field for live status retrieval
+    zone.current_occupancy = telemetry.count
+
     # 1a. Idempotency Check: prevent duplicate telemetry processing at identical timestamp
-    from datetime import timezone
-    telemetry_time = telemetry.timestamp.astimezone(timezone.utc) if telemetry.timestamp.tzinfo else telemetry.timestamp.replace(tzinfo=timezone.utc)
-    
-    existing_snapshots = (await db.execute(
-        select(ZoneOccupancySnapshot).where(ZoneOccupancySnapshot.zone_id == telemetry.zone_id)
-    )).scalars().all()
-    
-    duplicate_found = False
-    for snap in existing_snapshots:
-        snap_time = snap.recorded_at.astimezone(timezone.utc) if snap.recorded_at.tzinfo else snap.recorded_at.replace(tzinfo=timezone.utc)
-        if snap_time == telemetry_time:
-            duplicate_found = True
-            break
-            
+    # Optimized: single DB-level query
+    existing_snapshot_result = await db.execute(
+        select(ZoneOccupancySnapshot).where(
+            ZoneOccupancySnapshot.zone_id == telemetry.zone_id,
+            ZoneOccupancySnapshot.recorded_at == telemetry.timestamp
+        ).limit(1)
+    )
+    duplicate_found = existing_snapshot_result.scalars().first() is not None
+
     if duplicate_found:
         return {
             "status": "success",
@@ -50,10 +47,10 @@ async def process_telemetry_input(
         try:
             zone_occupancy_key = f"stadium:zone:{telemetry.zone_id}:occupancy"
             zone_stream_key = f"stadium:zone:{telemetry.zone_id}:occupancy_stream"
-            
+
             # Store current count
             await redis_client.set(zone_occupancy_key, telemetry.count)
-            
+
             # Store timeseries element for sliding window calculations
             timestamp_epoch = int(telemetry.timestamp.timestamp())
             await redis_client.zadd(zone_stream_key, {str(telemetry.count): timestamp_epoch})
@@ -64,7 +61,7 @@ async def process_telemetry_input(
             )
 
 
-    
+
     # 3. Create occupancy snapshot record in Postgres (low frequency - for history)
     # We will log every reading for the MVP, or can filter.
     snapshot = ZoneOccupancySnapshot(
@@ -74,31 +71,27 @@ async def process_telemetry_input(
         recorded_at=telemetry.timestamp
     )
     db.add(snapshot)
-    
+
     # 4. Threshold checking: Evaluate if crowd risk is breached (e.g. occupancy > 80% safe capacity)
     threshold_limit = int(zone.safe_capacity * 0.8)
     event_created = None
-    
-    if telemetry.count >= threshold_limit:
+
+    if zone.safe_capacity > 0 and telemetry.count >= threshold_limit:
         # Check cooldown to prevent duplicate active events / recommendations in the last 60 seconds
         from datetime import timedelta, timezone
         t_now = telemetry.timestamp.astimezone(timezone.utc) if telemetry.timestamp.tzinfo else telemetry.timestamp.replace(tzinfo=timezone.utc)
         cooldown_time = t_now - timedelta(seconds=60)
-        
-        recent_events = (await db.execute(
+
+        # Optimized: single DB-level query checking timeframe
+        recent_event_result = await db.execute(
             select(OperationalEvent).where(
                 OperationalEvent.zone_id == telemetry.zone_id,
-                OperationalEvent.event_type == "CROWD_DENSITY_HIGH"
-            )
-        )).scalars().all()
-        
-        has_recent = False
-        for e in recent_events:
-            e_time = e.received_at.astimezone(timezone.utc) if e.received_at.tzinfo else e.received_at.replace(tzinfo=timezone.utc)
-            if e_time >= cooldown_time:
-                has_recent = True
-                break
-                
+                OperationalEvent.event_type == "CROWD_DENSITY_HIGH",
+                OperationalEvent.received_at >= cooldown_time
+            ).limit(1)
+        )
+        has_recent = recent_event_result.scalars().first() is not None
+
         if has_recent:
             return {
                 "status": "success",
@@ -114,10 +107,10 @@ async def process_telemetry_input(
         event_payload = {
             "current_occupancy": telemetry.count,
             "safe_capacity": zone.safe_capacity,
-            "occupancy_ratio": round(telemetry.count / zone.safe_capacity, 2),
+            "occupancy_ratio": round(telemetry.count / zone.safe_capacity, 2) if zone.safe_capacity else 0.0,
             "sensor_type": telemetry.sensor_type
         }
-        
+
         event_created = OperationalEvent(
             id=uuid.uuid4(),
             zone_id=telemetry.zone_id,
@@ -130,11 +123,11 @@ async def process_telemetry_input(
         )
         db.add(event_created)
         await db.commit() # Commit event to get ID reference
-        
+
         # Trigger recommendation generation pipeline
         from backend.app.services.recommend import generate_and_validate_recommendations
         rec = await generate_and_validate_recommendations(db, redis_client, event_created, "VOLUNTEER")
-        
+
         # Publish structured message to Redis pub/sub channel
         import json
         alert_payload = {
@@ -154,7 +147,7 @@ async def process_telemetry_input(
             local_pubsub_bus.publish(json.dumps(alert_payload))
 
 
-        
+
         return {
             "status": "success",
             "zone": zone.name,
@@ -163,9 +156,9 @@ async def process_telemetry_input(
             "correlation_id": str(event_created.correlation_id),
             "recommendation_id": str(rec.id)
         }
-        
+
     await db.commit()
-    
+
     return {
         "status": "success",
         "zone": zone.name,

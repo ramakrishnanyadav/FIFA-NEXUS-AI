@@ -70,16 +70,19 @@ async def stream_operational_events(
     )
 
 
+from backend.app.core.auth import verify_api_key
+
 @router.post("", response_model=OperationalEventResponse, status_code=status.HTTP_201_CREATED)
 async def create_manual_event(
     event_in: OperationalEventCreate,
     db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client)
+    redis_client: aioredis.Redis = Depends(get_redis_client),
+    _: str = Depends(verify_api_key)
 ):
     try:
         correlation_id = event_in.correlation_id or uuid.uuid4()
         trace_id = event_in.trace_id or f"tr-{uuid.uuid4().hex[:8]}"
-        
+
         event = OperationalEvent(
             id=uuid.uuid4(),
             zone_id=event_in.zone_id,
@@ -93,21 +96,25 @@ async def create_manual_event(
         db.add(event)
         await db.commit()
         await db.refresh(event)
-        
+
         # Publish event notification via Redis Pub/Sub for SSE (with local fallback)
         alert_msg = f"{event.event_type} reported by {event.source}: {json.dumps(event.payload)}"
         try:
             await redis_client.publish("events:stream", alert_msg)
-        except Exception:
+        except Exception as e:
+            from backend.app.core.logging import logger
+            logger.warning(f"Redis event publish failed: {e}. Falling back to local in-memory event bus.")
             local_pubsub_bus.publish(alert_msg)
 
-        
+
         return event
     except Exception as e:
         await db.rollback()
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to record operational event: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to record operational event: {str(e)}"
+            detail="Failed to record operational event. Please try again."
         )
 
 @router.get("", response_model=List[OperationalEventResponse])
@@ -122,12 +129,14 @@ async def list_operational_events(
         if event_type:
             query = query.where(OperationalEvent.event_type == event_type)
         query = query.order_by(OperationalEvent.received_at.desc()).limit(limit).offset(offset)
-        
+
         result = await db.execute(query)
         events = result.scalars().all()
         return events
     except Exception as e:
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to fetch events: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch events: {str(e)}"
+            detail="Failed to fetch events. Please try again."
         )

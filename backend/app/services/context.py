@@ -1,5 +1,4 @@
 import uuid
-from typing import List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import redis.asyncio as aioredis
@@ -36,7 +35,7 @@ async def build_operational_context(
             )
 
 
-    
+
     # Fallback to current snapshot in Postgres if Redis cache was empty
     if not historical_counts:
         snap_res = await db.execute(
@@ -87,7 +86,7 @@ async def build_operational_context(
         "relevant_procedures": relevant_procedures,
         "timestamp": datetime_to_iso(datetime_now())
     }
-    
+
     return context
 
 

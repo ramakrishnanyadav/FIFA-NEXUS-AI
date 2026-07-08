@@ -15,6 +15,7 @@ class ZoneResponseSchema(BaseModel):
     name: str
     zone_type: str
     safe_capacity: int
+    current_occupancy: int
 
     class Config:
         from_attributes = True
@@ -26,4 +27,6 @@ async def list_zones(db: AsyncSession = Depends(get_db)):
         zones = result.scalars().all()
         return zones
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load zones: {str(e)}")
+        from backend.app.core.logging import logger
+        logger.error(f"Failed to load zones: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load zones. Please try again.")

@@ -1,6 +1,5 @@
 import logging
 import sys
-from typing import Any, Dict
 import json
 
 # Setup standard formatted logger for the application
@@ -23,7 +22,7 @@ class JSONFormatter(logging.Formatter):
             log_record["correlation_id"] = record.correlation_id
         if hasattr(record, "trace_id"):
             log_record["trace_id"] = record.trace_id
-            
+
         return json.dumps(log_record)
 
 # Console Handler

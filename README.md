@@ -10,8 +10,9 @@
   <img src="https://img.shields.io/badge/LightGBM-ML-02569B?style=for-the-badge&logo=lightgbm&logoColor=white" />
 </p>
 <p>
-  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white" />
-  <img src="https://img.shields.io/badge/LangGraph-Agent-2EA44F?style=for-the-badge&logo=langchain&logoColor=white" />
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o_mini-412991?style=for-the-badge&logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/LightGBM-4.5.0-02569B?style=for-the-badge&logo=lightgbm&logoColor=white" />
+  <img src="https://img.shields.io/badge/scikit--learn-1.5-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white" />
   <img src="https://img.shields.io/badge/Redis-7.0-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
 </p>
@@ -24,9 +25,51 @@
 
 <br/>
 
-> **FIFA Nexus AI** proactively resolves crowd congestion and stadium bottlenecks at the FIFA World Cup 2026 by combining real-time sensor telemetry, LightGBM crowd forecasting, LangGraph AI reasoning, and a deterministic policy safety gate — delivering human-supervised AI decisions in a closed-loop operations workflow.
+> **FIFA Nexus AI** proactively resolves crowd congestion and stadium bottlenecks at the FIFA World Cup 2026 by combining real-time sensor telemetry, LightGBM crowd forecasting, OpenAI GPT-4o-mini reasoning, and a deterministic policy safety gate — delivering human-supervised AI decisions in a closed-loop operations workflow.
 
 </div>
+
+---
+
+## 🎬 Live Dashboard Demo
+
+> The animation below is a real recording captured from the running system — **no mocking, no stub data**. Every state change shown is driven by live API calls through the full telemetry → ML → AI → safety gate → dispatch pipeline.
+
+<div align="center">
+  <img src="docs/assets/demo_walkthrough.webp" alt="FIFA Nexus AI Live Dashboard Walkthrough" width="100%" />
+  <br/><sub><i>Real-time crowd intelligence: sensor telemetry → LightGBM forecast → GPT-4o-mini reasoning → policy gate → volunteer dispatch</i></sub>
+</div>
+
+---
+
+## 📸 Dashboard Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🟢 Nominal Operations — All Zones Green</strong><br/><br/>
+      <img src="docs/assets/dashboard_initial.png" alt="Dashboard initial state — all zones nominal" width="100%" />
+      <br/><sub>5 stadium zones monitored in real time via SSE. Auth chip visible top-right.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>🔴 Congestion Breach — Gate A Critical</strong><br/><br/>
+      <img src="docs/assets/dashboard_breach.png" alt="Gate A congestion breach — SVG map turns red" width="100%" />
+      <br/><sub>Gate A breaches 85% safe capacity. SVG map pulses red. AI recommendation auto-generates.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🔐 API-Key Authentication Panel</strong><br/><br/>
+      <img src="docs/assets/dashboard_auth.png" alt="Authenticated dashboard view" width="100%" />
+      <br/><sub>Static API-key gate secures all write, recommendation, and chat endpoints.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>🤖 AI Chat Assistant — Live Zone Query</strong><br/><br/>
+      <img src="docs/assets/chat_assistant.png" alt="AI Assistant answering Gate A status query" width="100%" />
+      <br/><sub>Assistant queries live DB, returns real occupancy figures. Intent classified as <code>zone_status</code>.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -62,8 +105,8 @@ graph TD
     subgraph CoreAI [Reasoning & Safety Gates]
         RedisCache -->|Live Context| ContextBuilder[Context Builder]
         QdrantDB[(Qdrant Vector DB)] -.- |Search SOPs & Maps| ContextBuilder
-        ContextBuilder -->|Payload| LangGraphAI[LangGraph AI Reasoner]
-        LangGraphAI -->|Proposals| ConstraintScorer[Constraint Optimizer]
+        ContextBuilder -->|Payload| OpenAIAgent[OpenAI Reasoning Agent]
+        OpenAIAgent -->|Proposals| ConstraintScorer[Constraint Optimizer]
         ConstraintScorer -->|Ranked Options| PolicyGate[Rules Safety Gate]
         PolicyGate -->|Validated Recommendation| PostgresDB
     end
@@ -79,7 +122,36 @@ graph TD
     classDef db fill:#161F30,stroke:#334155,stroke-width:1px,color:#fff;
     classDef api fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff;
     class EventStore,RedisCache,PostgresDB,QdrantDB db;
-    class IngestAPI,LangGraphAI,PolicyGate,Dashboard api;
+    class IngestAPI,OpenAIAgent,PolicyGate,Dashboard api;
+```
+
+---
+
+## 🛡️ Resilient Fallback Architecture (Offline-Mode First)
+
+FIFA Nexus AI is designed to withstand infrastructure degradation during high-traffic match days. When network segments fail, the platform downgrades gracefully rather than crashing:
+
+```mermaid
+graph TD
+    subgraph DataCache [Cache & Storage Fallback]
+        PG[Postgres Database] -->|Connection Lost| SQLite[SQLite local_stadium.db]
+        Redis[Redis Pub/Sub & Cache] -->|Timeout/Offline| LocalBus[In-Memory LocalPubSubBus]
+    end
+
+    subgraph VectorSearch [Vector Retrieval Fallback]
+        Qdrant[Qdrant Collection] -->|Search Failure| FallbackSOP[Local JSON SOP Catalog]
+    end
+
+    subgraph LLMReasoning [LLM API Fallback Chain]
+        OpenAI[1. OpenAI GPT-4o-mini] -->|Quota/Network Error| Groq[2. Groq Llama-3-70b]
+        Groq -->|API Timeout| Featherless[3. Featherless Client]
+        Featherless -->|Failure| LocalHeuristics[4. Local Heuristic Rule Engine]
+    end
+
+    classDef pg fill:#161F30,stroke:#334155,stroke-width:1px,color:#fff;
+    classDef fall fill:#0f172a,stroke:#e11d48,stroke-width:1.5px,color:#fff;
+    class PG,Redis,Qdrant,OpenAI pg;
+    class SQLite,LocalBus,FallbackSOP,Groq,Featherless,LocalHeuristics fall;
 ```
 
 ---
@@ -99,7 +171,7 @@ graph TD
 | Technology | Role |
 |---|---|
 | ![OpenAI](https://img.shields.io/badge/OpenAI_GPT--4o-412991?logo=openai&logoColor=white) | LLM backend for adaptive operations strategy generation |
-| ![LangGraph](https://img.shields.io/badge/LangGraph_Agent-2EA44F?logo=langchain&logoColor=white) | Multi-step AI reasoning agent with SOP retrieval and fallback heuristics |
+| ![OpenAI](https://img.shields.io/badge/OpenAI_GPT--4o_mini-412991?logo=openai&logoColor=white) | AI reasoning agent: generates structured action plans from live operational context, with structured JSON output and heuristic fallback |
 | ![LightGBM](https://img.shields.io/badge/LightGBM-Predictor-02569B?logo=lightgbm&logoColor=white) | Gradient-boosted crowd occupancy forecasting trained on synthetic stadium telemetry |
 | ![Qdrant](https://img.shields.io/badge/Qdrant-VectorDB-FF6135?logo=qdrant&logoColor=white) | Vector search engine for SOP document retrieval (RAG pipeline) |
 
@@ -127,7 +199,7 @@ graph TD
 fifa-nexus-ai/
 ├── backend/                     # FastAPI REST + SSE Application & Dashboard
 │   ├── app/
-│   │   ├── ai/                  # LangGraph agent & Qdrant vector search
+│   │   ├── ai/                  # OpenAI reasoning agent & Qdrant vector search
 │   │   ├── api/                 # Route handlers: telemetry, events, recommendations, tasks, zones, assistant
 │   │   ├── core/                # Database pooling, config, structured logging, seed scripts
 │   │   ├── models/              # SQLAlchemy ORM models (PostGIS-compatible schemas)
@@ -196,19 +268,22 @@ pytest -s backend/tests/test_evaluation.py
 
 ## 🎯 Live Demo Walkthrough
 
+> **Demo API Key (for judges):** `fifanexus_api_key_2026` — enter this in the dashboard's API key prompt to unlock all write and recommendation endpoints.
+
 The dashboard tells a complete operations story in under 6 minutes:
 
 | Step | Action | Observable Outcome |
 |---|---|---|
-| **1. Baseline** | Open dashboard | All 5 stadium zones show green nominal occupancy |
-| **2. Crowd Spike** | Click **Run Ingress Simulation Wave** | Gate A occupancy climbs: 480 → 660 → 864 → 1,020 |
-| **3. ML Alert** | Watch SSE log | `CROWD_DENSITY_HIGH` event fires; Gate A pulses red on the map |
-| **4. AI Recommendation** | Decision Support panel | AI generates: *"Deploy signage at Gate A, redirect to Gate B"* with wait-time reduction estimate |
-| **5. Evidence** | Click **View SOP Context** | RAG evidence document SOP-744 displayed in modal |
-| **6. Reject & Reroute** | Click **Reject** | AI re-reasons and generates alternative strategy with rationale |
-| **7. Approve** | Click **Approve & Dispatch** | Volunteer tasks appear in ground dispatch queue |
-| **8. Fan Query** | Ask chat: *"Where is the fastest entrance?"* | Assistant queries live zone data and returns lowest-occupancy gate |
-| **9. Resolve** | Click **Mark Completed** | Incident closes; feedback logged to database |
+| **1. Baseline** | Open `http://localhost:8000` | All 5 stadium zones show green nominal occupancy on SVG map |
+| **2. Authenticate** | Enter API key `fifanexus_api_key_2026` in the lock icon prompt | Auth chip turns green — write endpoints unlocked |
+| **3. Crowd Spike** | POST telemetry to Gate A (`count: 1120`) via API or console | Gate A occupancy climbs past 85% safe capacity threshold |
+| **4. ML Alert** | Watch SSE log stream | `CROWD_DENSITY_HIGH` event fires; Gate A **pulses red** on the SVG map |
+| **5. AI Recommendation** | Decision Support panel auto-updates | GPT-4o-mini generates: *"Deploy signage at Gate A, redirect fans to Gate B"* with wait-time reduction estimate |
+| **6. Evidence** | Click **View SOP Context** button | RAG-retrieved SOP document shown — confirms grounding in stadium procedures |
+| **7. Approve** | Click **Approve & Dispatch** | Volunteer task cards appear in Ground Dispatch queue instantly via SSE |
+| **8. Complete Task** | Click ✅ on a task card | Task transitions to `COMPLETED`; feedback logged to database |
+| **9. Fan Query** | Open chat → ask: *"Gate A status"* | Assistant queries live DB; returns real occupancy figures with intent `zone_status` |
+| **10. Alt Query** | Ask: *"Where is the fastest entrance?"* | Assistant ranks all zones by live occupancy; returns lowest-congestion gate |
 
 ---
 

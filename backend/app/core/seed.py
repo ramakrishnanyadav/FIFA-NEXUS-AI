@@ -11,7 +11,7 @@ async def seed_initial_data(db: AsyncSession):
     # 1. Seed Roles
     role_names = ["VENUE_MANAGER", "VOLUNTEER", "SECURITY", "DISPATCHER", "FAN", "ACCESSIBILITY_STAFF"]
     roles_dict = {}
-    
+
     for r_name in role_names:
         result = await db.execute(select(Role).where(Role.name == r_name))
         role = result.scalars().first()
@@ -20,7 +20,7 @@ async def seed_initial_data(db: AsyncSession):
             db.add(role)
             print(f"Seeded role: {r_name}")
         roles_dict[r_name] = role
-    
+
     # 2. Seed Permissions
     permissions_list = [
         ("telemetry:write", "Can ingest sensor readings"),
@@ -31,7 +31,7 @@ async def seed_initial_data(db: AsyncSession):
         ("tasks:read", "Can view volunteer tasks"),
         ("tasks:write", "Can claim and update volunteer tasks")
     ]
-    
+
     for code, desc in permissions_list:
         result = await db.execute(select(Permission).where(Permission.code == code))
         perm = result.scalars().first()
@@ -59,7 +59,7 @@ async def seed_initial_data(db: AsyncSession):
         )
         db.add(manager)
         print("Seeded User: manager_alpha")
-        
+
     # Volunteer
     result = await db.execute(select(User).where(User.username == "volunteer_bob"))
     volunteer = result.scalars().first()
@@ -95,7 +95,7 @@ async def seed_initial_data(db: AsyncSession):
         )
         db.add(stadium)
         print("Seeded Stadium: Hard Rock Stadium")
-        
+
         # Seed Zones (Gates, Concourses)
         zones_data = [
             ("Gate A", "GATE", 1200, "POLYGON((-80.2390 25.9582, -80.2386 25.9582, -80.2386 25.9578, -80.2390 25.9578, -80.2390 25.9582))"),
@@ -104,7 +104,7 @@ async def seed_initial_data(db: AsyncSession):
             ("West Concourse", "CONCOURSE", 3000, "POLYGON((-80.2410 25.9592, -80.2400 25.9592, -80.2400 25.9568, -80.2410 25.9568, -80.2410 25.9592))"),
             ("Transport Hub Alpha", "TRANSPORT_HUB", 2500, "POLYGON((-80.2420 25.9550, -80.2410 25.9550, -80.2410 25.9540, -80.2420 25.9540, -80.2420 25.9550))")
         ]
-        
+
         for name, z_type, capacity, poly_wkt in zones_data:
             if USE_SQLITE:
                 poly_geom = poly_wkt
