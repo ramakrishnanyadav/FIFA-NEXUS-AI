@@ -81,7 +81,7 @@ async def stream_operational_events(
         media_type="text/event-stream"
     )
 
-@router.post("", response_model=OperationalEventResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=OperationalEventResponse, status_code=status.HTTP_201_CREATED, responses={500: {"description": "Internal server error"}})
 async def create_manual_event(
     event_in: OperationalEventCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -125,7 +125,7 @@ async def create_manual_event(
             detail="Failed to record operational event. Please try again."
         )
 
-@router.get("", response_model=list[OperationalEventResponse])
+@router.get("", response_model=list[OperationalEventResponse], responses={500: {"description": "Internal server error"}})
 async def list_operational_events(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,

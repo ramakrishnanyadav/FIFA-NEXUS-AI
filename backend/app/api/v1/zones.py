@@ -21,7 +21,7 @@ class ZoneResponseSchema(BaseModel):
 
 from typing import Annotated
 
-@router.get("", response_model=list[ZoneResponseSchema])
+@router.get("", response_model=list[ZoneResponseSchema], responses={500: {"description": "Failed to load zones"}})
 async def list_zones(db: Annotated[AsyncSession, Depends(get_db)]):
     try:
         result = await db.execute(select(Zone).where(Zone.deleted_at.is_(None)))

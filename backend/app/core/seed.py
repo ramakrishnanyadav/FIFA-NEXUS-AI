@@ -13,8 +13,7 @@ def _get_mock_hash(user_type: str) -> str:
     return ":".join(parts[:3]) + "$" + parts[3]
 
 
-async def seed_initial_data(db: AsyncSession):
-    # 1. Seed Roles
+async def _seed_roles_and_permissions(db: AsyncSession) -> dict:
     role_names = ["VENUE_MANAGER", "VOLUNTEER", "SECURITY", "DISPATCHER", "FAN", "ACCESSIBILITY_STAFF"]
     roles_dict = {}
 
@@ -27,7 +26,6 @@ async def seed_initial_data(db: AsyncSession):
             print(f"Seeded role: {r_name}")
         roles_dict[r_name] = role
 
-    # 2. Seed Permissions
     permissions_list = [
         ("telemetry:write", "Can ingest sensor readings"),
         ("events:read", "Can view operational events"),
@@ -46,10 +44,11 @@ async def seed_initial_data(db: AsyncSession):
             db.add(perm)
             print(f"Seeded permission: {code}")
 
-    # Commit roles & permissions so they exist before user creation
     await db.commit()
+    return roles_dict
 
-    # 3. Seed Users
+
+async def _seed_users(db: AsyncSession, roles_dict: dict):
     # Manager
     result = await db.execute(select(User).where(User.username == "manager_alpha"))
     manager = result.scalars().first()
@@ -82,7 +81,8 @@ async def seed_initial_data(db: AsyncSession):
         db.add(volunteer)
         print("Seeded User: volunteer_bob")
 
-    # 4. Seed Stadium & Zones
+
+async def _seed_stadium_and_zones(db: AsyncSession):
     result = await db.execute(select(Stadium).where(Stadium.name == "Hard Rock Stadium"))
     stadium = result.scalars().first()
     if not stadium:
@@ -127,5 +127,10 @@ async def seed_initial_data(db: AsyncSession):
             db.add(zone)
             print(f"Seeded Zone: {name} in Hard Rock Stadium")
 
+
+async def seed_initial_data(db: AsyncSession):
+    roles_dict = await _seed_roles_and_permissions(db)
+    await _seed_users(db, roles_dict)
+    await _seed_stadium_and_zones(db)
     await db.commit()
     print("Database seeding completed successfully.")

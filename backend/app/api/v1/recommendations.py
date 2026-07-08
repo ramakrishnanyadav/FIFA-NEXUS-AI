@@ -13,7 +13,7 @@ from backend.app.schemas.schemas import RecommendationResponse, RecommendationFe
 
 router = APIRouter()
 
-@router.get("", response_model=list[RecommendationResponse])
+@router.get("", response_model=list[RecommendationResponse], responses={500: {"description": "Failed to fetch recommendations"}})
 async def list_recommendations(
     db: Annotated[AsyncSession, Depends(get_db)],
     trigger_event_id: uuid.UUID | None = None,
@@ -37,7 +37,7 @@ async def list_recommendations(
             detail="Failed to fetch recommendations. Please try again."
         )
 
-@router.get("/stats", status_code=status.HTTP_200_OK)
+@router.get("/stats", status_code=status.HTTP_200_OK, responses={500: {"description": "Failed to compile recommendation metrics"}})
 async def get_recommendation_stats(
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -157,13 +157,13 @@ async def _create_and_dispatch_tasks(db: AsyncSession, redis_client: aioredis.Re
             local_pubsub_bus.publish(json.dumps(task_alert))
     return created_tasks
 
-@router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}})
+@router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}, 500: {"description": "Internal server error"}})
 async def apply_recommendation(
     recommendation_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
     _: Annotated[str, Depends(verify_api_key)],
-    idempotency_key: uuid.UUID | None = Header(None, alias="Idempotency-Key")
+    idempotency_key: Annotated[uuid.UUID | None, Header(alias="Idempotency-Key")] = None
 ):
     # 1. Idempotency Check
     cached_val = await _get_idempotency_cache(redis_client, idempotency_key)
@@ -218,7 +218,7 @@ async def apply_recommendation(
             detail="Failed to apply recommendation. Please try again."
         )
 
-@router.post("/{recommendation_id}/feedback", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}})
+@router.post("/{recommendation_id}/feedback", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}, 500: {"description": "Internal server error"}})
 async def submit_feedback(
     recommendation_id: uuid.UUID,
     feedback: RecommendationFeedback,

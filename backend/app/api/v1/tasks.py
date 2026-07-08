@@ -1,4 +1,5 @@
 from typing import Annotated
+import asyncio
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -13,6 +14,25 @@ from backend.app.schemas.schemas import TaskResponse, TaskUpdate
 
 router = APIRouter()
 
+TASKS_STREAM_CHANNEL = "tasks:stream"
+
+async def _stream_local_tasks(local_queue: asyncio.Queue):
+    while True:
+        try:
+            message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
+            yield f"event: task_dispatched\ndata: {message_data}\n\n"
+            local_queue.task_done()
+        except TimeoutError:
+            yield ": ping\n\n"
+
+async def _stream_redis_tasks(pubsub):
+    while True:
+        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+        if message:
+            yield f"event: task_dispatched\ndata: {message['data']}\n\n"
+        else:
+            yield ": ping\n\n"
+
 # SSE Generator reading from Redis Pub/Sub for Tasks
 async def task_generator(redis_client: aioredis.Redis):
     from backend.app.core.database import USE_REDIS, local_pubsub_bus
@@ -23,7 +43,7 @@ async def task_generator(redis_client: aioredis.Redis):
     if USE_REDIS:
         try:
             pubsub = redis_client.pubsub()
-            await pubsub.subscribe("tasks:stream")
+            await pubsub.subscribe(TASKS_STREAM_CHANNEL)
             yield "event: system\ndata: Connected to tasks channel\n\n"
         except Exception:
             local_queue = asyncio.Queue()
@@ -35,26 +55,18 @@ async def task_generator(redis_client: aioredis.Redis):
         yield "event: system\ndata: Connected to local tasks stream (Redis Offline Fallback)\n\n"
 
     try:
-        while True:
-            if local_queue is not None:
-                try:
-                    message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
-                    yield f"event: task_dispatched\ndata: {message_data}\n\n"
-                    local_queue.task_done()
-                except TimeoutError:
-                    yield ": ping\n\n"
-            else:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message:
-                    yield f"event: task_dispatched\ndata: {message['data']}\n\n"
-                else:
-                    yield ": ping\n\n"
+        if local_queue is not None:
+            async for task_event in _stream_local_tasks(local_queue):
+                yield task_event
+        else:
+            async for task_event in _stream_redis_tasks(pubsub):
+                yield task_event
     except Exception as e:
         yield f"event: error\ndata: {str(e)}\n\n"
     finally:
         if pubsub is not None:
             try:
-                await pubsub.unsubscribe("tasks:stream")
+                await pubsub.unsubscribe(TASKS_STREAM_CHANNEL)
                 await pubsub.close()
             except Exception:
                 pass  # nosec B110
@@ -70,7 +82,7 @@ async def stream_tasks(
         media_type="text/event-stream"
     )
 
-@router.get("", response_model=list[TaskResponse])
+@router.get("", response_model=list[TaskResponse], responses={500: {"description": "Failed to fetch tasks"}})
 async def list_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     role: str | None = None,
@@ -99,7 +111,7 @@ async def list_tasks(
 
 from backend.app.core.auth import verify_api_key
 
-@router.patch("/{task_id}", response_model=TaskResponse, responses={404: {"description": "Task not found"}})
+@router.patch("/{task_id}", response_model=TaskResponse, responses={404: {"description": "Task not found"}, 500: {"description": "Internal server error"}})
 async def update_task_status(
     task_id: uuid.UUID,
     task_update: TaskUpdate,
