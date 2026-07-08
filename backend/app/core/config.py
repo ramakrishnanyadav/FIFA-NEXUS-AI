@@ -41,8 +41,21 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=120)
     API_KEY: str = Field(default="")  # Set via API_KEY env var for API protection
 
+    # Optional: full DATABASE_URL override (Render, Railway, Heroku inject this directly)
+    DATABASE_URL_OVERRIDE: str = Field(default="", alias="DATABASE_URL")
+
     @property
     def DATABASE_URL(self) -> str:
+        # Render injects DATABASE_URL as postgres://... — convert to asyncpg dialect
+        if self.DATABASE_URL_OVERRIDE:
+            url = self.DATABASE_URL_OVERRIDE
+            # Render uses postgres://, asyncpg requires postgresql+asyncpg://
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://") and "+asyncpg" not in url:
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url
+        # Local dev: build from individual POSTGRES_* env vars
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     @property
@@ -52,7 +65,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=True
+        case_sensitive=True,
+        populate_by_name=True   # allows alias DATABASE_URL to populate DATABASE_URL_OVERRIDE
     )
 
 settings = Settings()
