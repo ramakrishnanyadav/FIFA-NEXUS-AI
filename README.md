@@ -7,14 +7,14 @@
   <a href="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml">
     <img src="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml/badge.svg" alt="Build Status" />
   </a>
-  <img src="https://img.shields.io/badge/Coverage-86%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
+  <img src="https://img.shields.io/badge/Coverage-68.9%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
   <img src="https://img.shields.io/badge/Security-Bandit_Passed-emerald?style=flat-square&logo=target&logoColor=white" alt="Security Status" />
   <img src="https://img.shields.io/badge/Code_Quality-Ruff_Passed-emerald?style=flat-square&logo=python&logoColor=white" alt="Code Quality" />
 </p>
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white" />
   <img src="https://img.shields.io/badge/LightGBM-ML-02569B?style=for-the-badge&logo=lightgbm&logoColor=white" />
 </p>
