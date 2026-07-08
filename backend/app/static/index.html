@@ -317,7 +317,7 @@
     </main>
 
     <!-- Dispatch & Active Tasks Panel (Bottom Shelf) -->
-    <section role="region" aria-label="Ground Dispatch queue" class="glass-panel p-6 border-t border-gray-800 z-10">
+    <section aria-label="Ground Dispatch queue" class="glass-panel p-6 border-t border-gray-800 z-10">
         <h2 class="text-base font-bold mb-4 flex items-center gap-2">
             <span>📢 ground dispatch queue</span>
             <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded">Active Tasks</span>
@@ -1402,7 +1402,7 @@
     </script>
 
     <!-- Floating AI Assistant Chat Bubble & Card -->
-    <div id="ai-chat-bubble" onclick="toggleChatWindow()" class="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-700 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all z-50 cursor-pointer border border-indigo-500/30" aria-label="Open AI Assistant Chat">
+    <div id="ai-chat-bubble" onclick="toggleChatWindow()" onkeydown="if(event.key==='Enter'||event.key===' '){toggleChatWindow();event.preventDefault();}" role="button" tabindex="0" class="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-700 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all z-50 cursor-pointer border border-indigo-500/30" aria-label="Open AI Assistant Chat">
         <span class="text-xl">💬</span>
         <span class="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950 animate-ping"></span>
         <span class="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
@@ -1432,7 +1432,7 @@
 
         <!-- Chat Input -->
         <form onsubmit="sendChatMessage(event)" class="p-3 border-t border-slate-800 bg-slate-950/80 flex gap-2">
-            <input type="text" id="chat-input-field" placeholder="Ask assistant..." autocomplete="off" class="flex-1 bg-brand-card border border-gray-700 text-xs text-white px-3 py-2 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+            <input type="text" id="chat-input-field" aria-label="Ask assistant" placeholder="Ask assistant..." autocomplete="off" class="flex-1 bg-brand-card border border-gray-700 text-xs text-white px-3 py-2 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none">
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all focus:outline-none">
                 ⚡ Send
             </button>

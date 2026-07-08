@@ -147,7 +147,7 @@ async def test_full_operational_pipeline():
     assert ctx["zone_name"] == "Gate A"
     assert ctx["safe_capacity"] == 1000
     assert ctx["current_occupancy"] > 0
-    assert ctx["congestion_risk_score"] == 0.88
+    assert ctx["congestion_risk_score"] == pytest.approx(0.88)
     assert len(ctx["relevant_procedures"]) == 2, "Expected 2 SOPs retrieved"
     assert ctx["predicted_occupancy_30m"] == 940
 

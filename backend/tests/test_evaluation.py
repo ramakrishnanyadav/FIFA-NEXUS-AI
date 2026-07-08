@@ -1,4 +1,5 @@
 
+import pytest
 import math
 from typing import List
 from backend.app.services.rules import validate_policy_rules
@@ -202,7 +203,7 @@ def test_policy_validator_precision_recall():
     print(f"Validator Precision: {precision * 100:.1f}% (No false alerts)")
 
     # Core safety engine requirements: Recall must be 100% (Never let a hazard pass)
-    assert recall == 1.0, f"Safety violation went undetected! Recall: {recall:.2f}"
+    assert recall == pytest.approx(1.0), f"Safety violation went undetected! Recall: {recall:.2f}"
     assert accuracy >= 0.85, f"Validation accuracy is below acceptable threshold: {accuracy:.2f}"
 
 def test_optimization_ranking():

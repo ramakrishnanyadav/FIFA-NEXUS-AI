@@ -68,9 +68,9 @@ def test_schema_contracts():
         assert response.status_code == status.HTTP_200_OK
         stats_data = response.json()
         assert stats_data["total_count"] == 1
-        assert stats_data["avg_reasoning_time_ms"] == 150.0
+        assert stats_data["avg_reasoning_time_ms"] == pytest.approx(150.0)
         assert stats_data["validated_count"] == 1
-        assert stats_data["total_co2_saved_kg"] == 5.2
+        assert stats_data["total_co2_saved_kg"] == pytest.approx(5.2)
         assert stats_data["provider_stats"]["openai/gpt-4o"] == 1
     finally:
         app.dependency_overrides.pop(get_db, None)
