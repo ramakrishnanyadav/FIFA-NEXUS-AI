@@ -1,3 +1,8 @@
+import os
+# Configure test environment defaults before any app components are imported
+os.environ.setdefault("API_KEY", "fifanexus_api_key_2026")
+os.environ.setdefault("ENVIRONMENT", "test")
+
 import pytest
 import asyncio
 
@@ -9,3 +14,4 @@ def event_loop():
         loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+

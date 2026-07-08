@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     # API Configurations
     PROJECT_NAME: str = "FIFA Nexus AI"
     API_V1_STR: str = "/api/v1"
-    ENVIRONMENT: str = Field(default="development")
+    ENVIRONMENT: str = Field(default="production")
 
     # PostgreSQL Configuration
     POSTGRES_USER: str = Field(default="admin")

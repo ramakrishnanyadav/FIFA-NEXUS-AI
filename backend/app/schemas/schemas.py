@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from uuid import UUID
 
 # Shared Config
@@ -16,8 +16,17 @@ class UserBase(SchemaBase):
     email: EmailStr
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8, description="User password (minimum 8 characters)")
     role_name: Literal["VOLUNTEER", "SECURITY", "VENUE_MANAGER", "DISPATCHER", "FAN", "ACCESSIBILITY_STAFF"] = "VOLUNTEER"
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one number")
+        return v
 
 class UserResponse(UserBase):
     id: UUID
@@ -44,7 +53,7 @@ class TelemetryCreate(BaseModel):
 class OperationalEventCreate(BaseModel):
     zone_id: UUID | None = None
     source: str = Field(..., description="Event publisher system name")
-    event_type: str = Field(..., description="Type of operational event, e.g. CROWD_DENSITY_HIGH")
+    event_type: Literal["CROWD_DENSITY_HIGH", "VOLUNTEER_DISPATCH", "SECURITY_ALERT", "INCIDENT_DISPATCH", "SYSTEM_UPDATE"] = Field(..., description="Type of operational event")
     payload: dict[str, Any] = Field(default_factory=dict, description="Typed event payload parameters")
     correlation_id: UUID | None = None
     trace_id: str | None = None
@@ -53,7 +62,7 @@ class OperationalEventResponse(SchemaBase):
     id: UUID
     zone_id: UUID | None
     source: str
-    event_type: str
+    event_type: Literal["CROWD_DENSITY_HIGH", "VOLUNTEER_DISPATCH", "SECURITY_ALERT", "INCIDENT_DISPATCH", "SYSTEM_UPDATE"]
     payload: dict[str, Any]
     received_at: datetime
     correlation_id: UUID
