@@ -1,5 +1,5 @@
 import socket
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
 import redis.asyncio as aioredis
@@ -92,7 +92,8 @@ class LocalPubSubBus:
             try:
                 queue.put_nowait(message)
             except Exception:
-                pass
+                pass  # nosec B110
 
 local_pubsub_bus = LocalPubSubBus()
+
 

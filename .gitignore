@@ -50,5 +50,6 @@ env/
 .env.*.local
 !.env.example
 
-# Logs
+# Logs and Temporary files
 *.log
+.coverage

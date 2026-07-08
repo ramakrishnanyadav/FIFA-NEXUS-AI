@@ -1,11 +1,11 @@
-from typing import List, Dict, Any
+from typing import Any
 
 def optimize_candidate_actions(
-    candidate_actions: List[str],
+    candidate_actions: list[str],
     current_occupancy: int,
     safe_capacity: int,
     congestion_risk: float
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Ranks and scores proposed actions based on:
     - Safety Score: penalized when occupancy_ratio > 0.8 (0.5 weight)

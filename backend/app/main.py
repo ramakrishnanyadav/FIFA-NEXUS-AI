@@ -19,6 +19,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from backend.app.core.rate_limit import RateLimitMiddleware, SecurityHeadersMiddleware
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "testserver"]
+)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+
 from backend.app.core.database import async_session_maker
 from backend.app.core.seed import seed_initial_data
 
@@ -45,9 +55,12 @@ async def startup_event():
     logger.info(f"OpenAI API Key: {openai_status}")
 
     # 4. Run database seed operations
-    async with async_session_maker() as session:
-        await seed_initial_data(session)
-    logger.info("Database initial seed complete.")
+    if settings.ENVIRONMENT == "development":
+        async with async_session_maker() as session:
+            await seed_initial_data(session)
+        logger.info("Database initial seed complete.")
+    else:
+        logger.info("Production environment detected. Skipping automatic database seeding.")
     logger.info("------------------------------------")
 
 

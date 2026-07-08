@@ -1,5 +1,4 @@
 import re
-from typing import List, Tuple, Optional
 
 # Static Policy Directives list
 CRITICAL_POLICIES = [
@@ -44,7 +43,7 @@ def _find_destination_ratios(
     action_lower: str,
     source_zone_name: str,
     zone_ratios: dict
-) -> Tuple[List[float], bool]:
+) -> tuple[list[float], bool]:
     """
     Scans the action text for mentions of known zone names (partial/substring match).
     Skips the source zone to avoid false positives.
@@ -54,7 +53,7 @@ def _find_destination_ratios(
             known zone could be identified as the destination (fail-safe).
     """
     source_lower = source_zone_name.lower() if source_zone_name else ""
-    matched_ratios: List[float] = []
+    matched_ratios: list[float] = []
     matched_any = False
 
     for z_name, z_ratio in zone_ratios.items():
@@ -82,11 +81,11 @@ def _find_destination_ratios(
 
 
 def validate_policy_rules(
-    candidate_actions: List[str],
-    policy_flags: List[str],
+    candidate_actions: list[str],
+    policy_flags: list[str],
     source_zone_name: str = "",
-    zone_ratios: Optional[dict] = None
-) -> Tuple[str, List[str]]:
+    zone_ratios: dict | None = None
+) -> tuple[str, list[str]]:
     """
     Checks recommendation compliance against strict stadium operations policy rules.
 

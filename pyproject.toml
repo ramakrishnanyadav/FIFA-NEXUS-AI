@@ -1,0 +1,19 @@
+[tool.ruff]
+# Target Python version
+target-version = "py311"
+
+# Line length
+line-length = 200
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "T20"]
+# Ignore rules:
+# E402: module level import not at top of file (FastAPI routes/middlewares)
+# T201: print statements (used in seed script and CLI diagnostics)
+# C901: function complexity (used in seed script)
+# E501: line too long
+# B008: function call Depends in argument defaults (standard FastAPI pattern)
+# B904: raise exception from e (fastapi exception wrapping)
+ignore = ["E402", "T201", "C901", "E501", "B008", "B904"]
+
+

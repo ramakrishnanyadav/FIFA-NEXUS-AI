@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List
 from uuid import UUID
 from pydantic import BaseModel
 from backend.app.core.database import get_db
@@ -20,7 +19,7 @@ class ZoneResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
-@router.get("", response_model=List[ZoneResponseSchema])
+@router.get("", response_model=list[ZoneResponseSchema])
 async def list_zones(db: AsyncSession = Depends(get_db)):
     try:
         result = await db.execute(select(Zone).where(Zone.deleted_at.is_(None)))

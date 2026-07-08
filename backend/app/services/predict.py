@@ -1,12 +1,11 @@
 import httpx
-from typing import List
 from uuid import UUID
 from backend.app.core.config import settings
 from backend.app.core.logging import logger
 
 async def get_occupancy_prediction(
     zone_id: UUID,
-    historical_occupancy: List[int],
+    historical_occupancy: list[int],
     safe_capacity: int,
     minutes_to_kickoff: int = 45
 ) -> dict:

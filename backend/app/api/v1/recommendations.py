@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -14,9 +13,9 @@ from backend.app.schemas.schemas import RecommendationResponse, RecommendationFe
 
 router = APIRouter()
 
-@router.get("", response_model=List[RecommendationResponse])
+@router.get("", response_model=list[RecommendationResponse])
 async def list_recommendations(
-    trigger_event_id: Optional[uuid.UUID] = None,
+    trigger_event_id: uuid.UUID | None = None,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db)
@@ -43,7 +42,7 @@ from backend.app.core.auth import verify_api_key
 @router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK)
 async def apply_recommendation(
     recommendation_id: uuid.UUID,
-    idempotency_key: Optional[uuid.UUID] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: uuid.UUID | None = Header(None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
     redis_client: aioredis.Redis = Depends(get_redis_client),
     _: str = Depends(verify_api_key)

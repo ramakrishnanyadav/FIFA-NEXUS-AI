@@ -6,6 +6,7 @@ from backend.app.models.models import Zone, OperationalEvent, ZoneOccupancySnaps
 from backend.app.schemas.schemas import TelemetryCreate
 
 from backend.app.core.logging import logger
+from datetime import UTC
 
 async def process_telemetry_input(
     db: AsyncSession,
@@ -78,8 +79,8 @@ async def process_telemetry_input(
 
     if zone.safe_capacity > 0 and telemetry.count >= threshold_limit:
         # Check cooldown to prevent duplicate active events / recommendations in the last 60 seconds
-        from datetime import timedelta, timezone
-        t_now = telemetry.timestamp.astimezone(timezone.utc) if telemetry.timestamp.tzinfo else telemetry.timestamp.replace(tzinfo=timezone.utc)
+        from datetime import timedelta
+        t_now = telemetry.timestamp.astimezone(UTC) if telemetry.timestamp.tzinfo else telemetry.timestamp.replace(tzinfo=UTC)
         cooldown_time = t_now - timedelta(seconds=60)
 
         # Optimized: single DB-level query checking timeframe

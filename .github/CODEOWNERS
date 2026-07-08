@@ -1,0 +1,8 @@
+# Global owners
+* @ramakrishnanyadav
+
+# Backend security, database, and auth files require security review
+/backend/app/core/auth.py @ramakrishnanyadav
+/backend/app/core/config.py @ramakrishnanyadav
+/backend/app/services/rules.py @ramakrishnanyadav
+/.github/workflows/ @ramakrishnanyadav

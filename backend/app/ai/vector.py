@@ -10,7 +10,6 @@ model and querying the nearest-neighbour SOP documents.
 Falls back to structured keyword-based catalog retrieval (category filter) when
 Qdrant is unavailable or the OpenAI key is absent.
 """
-from typing import List
 from uuid import UUID
 from backend.app.core.database import get_qdrant_client
 from backend.app.core.config import settings
@@ -34,7 +33,7 @@ DEFAULT_SOPS = {
 }
 
 
-async def _embed_query(query_text: str) -> List[float]:
+async def _embed_query(query_text: str) -> list[float]:
     """
     Generate an embedding vector using OpenAI text-embedding-3-small.
     Only called when OPENAI_API_KEY is configured — Featherless does not support embeddings.
@@ -52,7 +51,7 @@ async def retrieve_relevant_procedures(
     category: str,
     stadium_id: UUID,
     query_text: str
-) -> List[str]:
+) -> list[str]:
     """
     Retrieves relevant SOPs for an operational query.
 

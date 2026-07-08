@@ -1,7 +1,6 @@
 import uuid
 import json
 from datetime import datetime
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +39,7 @@ async def event_generator(redis_client: aioredis.Redis):
                     message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
                     yield f"event: operational_event\ndata: {message_data}\n\n"
                     local_queue.task_done()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": ping\n\n"
             else:
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
@@ -56,7 +55,7 @@ async def event_generator(redis_client: aioredis.Redis):
                 await pubsub.unsubscribe("events:stream")
                 await pubsub.close()
             except Exception:
-                pass
+                pass  # nosec B110
         if local_queue is not None:
             local_pubsub_bus.unsubscribe(local_queue)
 
@@ -117,11 +116,11 @@ async def create_manual_event(
             detail="Failed to record operational event. Please try again."
         )
 
-@router.get("", response_model=List[OperationalEventResponse])
+@router.get("", response_model=list[OperationalEventResponse])
 async def list_operational_events(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    event_type: Optional[str] = None,
+    event_type: str | None = None,
     db: AsyncSession = Depends(get_db)
 ):
     try:

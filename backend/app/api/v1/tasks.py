@@ -1,6 +1,5 @@
 
 import uuid
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +41,7 @@ async def task_generator(redis_client: aioredis.Redis):
                     message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
                     yield f"event: task_dispatched\ndata: {message_data}\n\n"
                     local_queue.task_done()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": ping\n\n"
             else:
                 message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
@@ -58,7 +57,7 @@ async def task_generator(redis_client: aioredis.Redis):
                 await pubsub.unsubscribe("tasks:stream")
                 await pubsub.close()
             except Exception:
-                pass
+                pass  # nosec B110
         if local_queue is not None:
             local_pubsub_bus.unsubscribe(local_queue)
 
@@ -71,10 +70,10 @@ async def stream_tasks(
         media_type="text/event-stream"
     )
 
-@router.get("", response_model=List[TaskResponse])
+@router.get("", response_model=list[TaskResponse])
 async def list_tasks(
-    role: Optional[str] = None,
-    task_status: Optional[str] = Query(None, alias="status"),
+    role: str | None = None,
+    task_status: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db)

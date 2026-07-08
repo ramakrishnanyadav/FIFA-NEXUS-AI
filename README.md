@@ -4,6 +4,15 @@
 <h3>Predictive Operational Intelligence Platform · FIFA World Cup 2026</h3>
 
 <p>
+  <a href="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml">
+    <img src="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml/badge.svg" alt="Build Status" />
+  </a>
+  <img src="https://img.shields.io/badge/Coverage-86%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
+  <img src="https://img.shields.io/badge/Security-Bandit_Passed-emerald?style=flat-square&logo=target&logoColor=white" alt="Security Status" />
+  <img src="https://img.shields.io/badge/Code_Quality-Ruff_Passed-emerald?style=flat-square&logo=python&logoColor=white" alt="Code Quality" />
+</p>
+
+<p>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white" />
@@ -67,6 +76,25 @@
       <strong>🤖 AI Chat Assistant — Live Zone Query</strong><br/><br/>
       <img src="docs/assets/chat_assistant.png" alt="AI Assistant answering Gate A status query" width="100%" />
       <br/><sub>Assistant queries live DB, returns real occupancy figures. Intent classified as <code>zone_status</code>.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🧠 AI Recommendation Panel UI</strong><br/><br/>
+      <img src="docs/assets/ai_recommendation.png" alt="AI Recommendation Panel" width="100%" />
+      <br/><sub>Generative AI action proposal with safety checks, confidence metrics, and estimated wait-time reductions.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>📋 Volunteer Task Management Board</strong><br/><br/>
+      <img src="docs/assets/volunteer_tasks.png" alt="Volunteer Task Board" width="100%" />
+      <br/><sub>Interactive ground dispatch queue tracking tasks from generated recommendation to completion.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <strong>📡 Real-time Event Stream Log</strong><br/><br/>
+      <img src="docs/assets/event_stream.png" alt="Real-time Event Stream Log" width="70%" />
+      <br/><sub>Live scrollable stream showing telemetry ticks, predictions, and validation logs in real time.</sub>
     </td>
   </tr>
 </table>

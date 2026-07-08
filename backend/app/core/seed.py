@@ -52,7 +52,7 @@ async def seed_initial_data(db: AsyncSession):
             id=uuid.uuid4(),
             username="manager_alpha",
             email="manager@fifanexus.ai",
-            password_hash="pbkdf2:sha256:260000$mock_hash_manager", # Mock hash
+            password_hash="pbkdf2:sha256:260000$mock_hash_manager", # nosec B106
             role_id=roles_dict["VENUE_MANAGER"].id,
             is_active=True,
             created_at=datetime.utcnow()
@@ -68,7 +68,7 @@ async def seed_initial_data(db: AsyncSession):
             id=uuid.uuid4(),
             username="volunteer_bob",
             email="bob@fifanexus.ai",
-            password_hash="pbkdf2:sha256:260000$mock_hash_volunteer",
+            password_hash="pbkdf2:sha256:260000$mock_hash_volunteer", # nosec B106
             role_id=roles_dict["VOLUNTEER"].id,
             is_active=True,
             created_at=datetime.utcnow()
