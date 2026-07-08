@@ -45,10 +45,12 @@ A mature production-ready platform acknowledges its constraints, validation boun
 ## 4. Security & Authentication
 
 ### Current Scope
-*   **Service-Level API Key**: Write, recommendation, task, and assistant endpoints are authenticated using an `X-API-Key` request header.
-*   **CORS Configuration**: CORS middleware allows all origins (`"*"`) for development and sandbox deployment, with credential sharing disabled to ensure compliance with strict cross-origin policies.
+*   **Service-Level API Key**: Write, recommendation, task, and assistant endpoints are authenticated using an `X-API-Key` request header. The default value is a placeholder for development, which must be rotated for production release.
+*   **CORS Configuration**: Hardened to a secure domain allowlist (e.g., localhost, loopback interfaces, and active production domains), replacing open wildcards.
+*   **Credential Defaults**: The `docker-compose.yml` secrets utilize default fallback values intended purely for local dev out-of-the-box experience, and must be overridden in production using externalized `.env` values.
 
 ### Real-World Production Roadmap
+*   **Secret Management**: Transition compose default strings to secure secret managers (e.g., HashiCorp Vault, AWS Secrets Manager).
 *   **OAuth2 / OIDC**: Integration with enterprise Identity Providers (IDPs) such as Okta, Keycloak, or Azure AD.
 *   **TLS Encryption**: Enforcing HTTPS (TLS 1.3) across all REST endpoints and SSE streams.
 *   **Role-Based Access Control (RBAC)**: Enforcing strict column and row-level database security permissions matching user roles (e.g. preventing volunteers from viewing other gate telemetry).
