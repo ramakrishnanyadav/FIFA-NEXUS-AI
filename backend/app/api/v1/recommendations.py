@@ -1,7 +1,7 @@
 
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -148,8 +148,8 @@ async def apply_recommendation(
                 assigned_role=rec.target_role if rec.target_role in ["VOLUNTEER", "SECURITY"] else "VOLUNTEER",
                 details=action,
                 status="DISPATCHED",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             db.add(task)
             created_tasks.append(task_id)

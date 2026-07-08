@@ -1,6 +1,6 @@
 import pytest
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from backend.app.schemas.schemas import TelemetryCreate
 from backend.app.services.telemetry import process_telemetry_input
@@ -45,7 +45,7 @@ async def test_telemetry_threshold_breach():
             zone_id=zone_id,
             sensor_type="camera",
             count=850,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         # 4. Process telemetry

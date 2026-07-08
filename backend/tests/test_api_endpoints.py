@@ -1,6 +1,6 @@
 import pytest
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from fastapi import status
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -162,8 +162,8 @@ async def test_get_tasks_endpoint(client):
     task_mock.assigned_role = "VOLUNTEER"
     task_mock.details = "Deploy signage at Gate A"
     task_mock.status = "PENDING"
-    task_mock.created_at = datetime.utcnow()
-    task_mock.updated_at = datetime.utcnow()
+    task_mock.created_at = datetime.now(timezone.utc)
+    task_mock.updated_at = datetime.now(timezone.utc)
 
     db_execute_mock = MagicMock()
     db_execute_mock.scalars().all.return_value = [task_mock]

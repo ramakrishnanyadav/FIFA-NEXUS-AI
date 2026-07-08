@@ -12,7 +12,7 @@ Tests:
 import pytest
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.app.schemas.schemas import TelemetryCreate
@@ -116,7 +116,7 @@ async def test_full_operational_pipeline():
             zone_id=zone_id,
             sensor_type="camera",
             count=870,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         result = await process_telemetry_input(db_mock, redis_mock, telemetry)
 
@@ -248,7 +248,7 @@ async def test_chaos_graceful_degradation():
             zone_id=zone_id,
             sensor_type="camera",
             count=700,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         result = await process_telemetry_input(db_mock, redis_mock, telemetry)
 
@@ -301,7 +301,7 @@ async def test_chaos_graceful_degradation():
         "ml_model_version": "fallback:heuristic:v1",
         "input_snapshot_hash": "abc123",
         "relevant_procedures": ["SOP-744: Activate Gate B bypass."],
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     }
 
     with patch("backend.app.ai.agents._get_llm_clients") as mock_clients:

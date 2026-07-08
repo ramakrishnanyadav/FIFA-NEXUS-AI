@@ -91,8 +91,8 @@ async def build_operational_context(
 
 
 def datetime_now() -> str:
-    from datetime import datetime
-    return datetime.utcnow().isoformat() + "Z"
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def datetime_to_iso(dt) -> str:
     return dt

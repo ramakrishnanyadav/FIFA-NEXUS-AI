@@ -6,7 +6,7 @@ from backend.app.core.config import settings
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-async def verify_api_key(api_key: str = Security(api_key_header)):
+def verify_api_key(api_key: str = Security(api_key_header)):
     """
     Dependency that validates the presence and value of the X-API-Key header.
     Fail-closed: If settings.API_KEY is unset or empty, it rejects all requests

@@ -1,4 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
+def _now_utc():
+    return datetime.now(timezone.utc)
 from sqlalchemy import (
     Column,
     String,
@@ -69,7 +72,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
@@ -85,7 +88,7 @@ class Stadium(Base):
     name = Column(String(100), unique=True, nullable=False)
     capacity = Column(Integer, nullable=False)
     location = Column(StadiumLocationType, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
@@ -117,7 +120,7 @@ class ZoneOccupancySnapshot(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=False, index=True)
     occupancy = Column(Integer, nullable=False)
-    recorded_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
+    recorded_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False, index=True)
 
     # Relationships
     zone = relationship("Zone", back_populates="occupancy_snapshots")
@@ -131,7 +134,7 @@ class OperationalEvent(Base):
     source = Column(String(100), nullable=False)
     event_type = Column(String(100), nullable=False, index=True)
     payload = Column(JSONColumnType, nullable=False)
-    received_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
+    received_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False, index=True)
     correlation_id = Column(UUID(as_uuid=True), nullable=False)
     trace_id = Column(String(100), nullable=True)
 
@@ -167,7 +170,7 @@ class Recommendation(Base):
     feedback_rating = Column(Integer, nullable=True)
     feedback_comments = Column(Text, nullable=True)
 
-    generated_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    generated_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
 
     # Relationships
     trigger_event = relationship("OperationalEvent", back_populates="recommendations")
@@ -183,8 +186,8 @@ class Task(Base):
     assigned_role = Column(String(50), nullable=False) # VOLUNTEER, SECURITY
     details = Column(Text, nullable=False)
     status = Column(String(20), default="PENDING", nullable=False) # PENDING, DISPATCHED, ACKNOWLEDGED, etc.
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now_utc, onupdate=_now_utc, nullable=False)
 
     # Relationships
     recommendation = relationship("Recommendation", back_populates="tasks")
@@ -201,7 +204,7 @@ class AuditLog(Base):
     resource_id = Column(String(100), nullable=True)
     ip_address = Column(String(45), nullable=True)
     details = Column(JSONColumnType, nullable=False)
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="audit_logs")

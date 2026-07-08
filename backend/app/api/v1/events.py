@@ -1,6 +1,6 @@
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +88,7 @@ async def create_manual_event(
             source=event_in.source,
             event_type=event_in.event_type,
             payload=event_in.payload,
-            received_at=datetime.utcnow(),
+            received_at=datetime.now(timezone.utc),
             correlation_id=correlation_id,
             trace_id=trace_id
         )

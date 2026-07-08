@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import redis.asyncio as aioredis
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.app.core.database import get_db, get_redis_client, USE_REDIS
 from backend.app.models.models import Task
 from backend.app.schemas.schemas import TaskResponse, TaskUpdate
@@ -114,7 +114,7 @@ async def update_task_status(
             raise HTTPException(status_code=404, detail="Task not found")
 
         task.status = task_update.status
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(task)
 
