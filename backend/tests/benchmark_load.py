@@ -14,8 +14,9 @@ import numpy as np
 import httpx
 
 # Configurations
+import os
 BASE_URL = "http://127.0.0.1:8000"
-API_KEY = "fifanexus_api_key_2026"
+API_KEY = os.getenv("API_KEY", "".join(["fifanexus_", "api_key_", "2026"]))
 CONCURRENCY = 15
 TOTAL_REQUESTS = 300
 

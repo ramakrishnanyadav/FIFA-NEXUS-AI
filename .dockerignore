@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.pytest_cache
+.ruff_cache
+venv
+htmlcov
+.coverage
+coverage.xml
+local_stadium.db
+*.pyc
+__pycache__

@@ -1,7 +1,6 @@
 import pytest
 import uuid
 import asyncio
-import random
 from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
@@ -295,11 +294,11 @@ def test_optimizer_property_fuzz():
     
     actions = ["Action A", "Action B", "Action C"]
     
-    for _ in range(100):
-        # Generate random inputs representing edge cases
-        occupancy = random.randint(0, 3000)
-        capacity = random.randint(1, 3000)  # capacity > 0
-        risk = random.uniform(0.0, 1.0)
+    for i in range(100):
+        # Generate deterministic inputs representing edge cases without PRNG
+        occupancy = (i * 37) % 3001
+        capacity = 1 + ((i * 59) % 3000)
+        risk = (i * 13 % 100) / 100.0
         
         result = optimize_candidate_actions(
             candidate_actions=actions,
