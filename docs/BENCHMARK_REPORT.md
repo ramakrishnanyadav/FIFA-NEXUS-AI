@@ -15,19 +15,19 @@ Measurements compiled during simulated match-day concurrency loads (150 concurre
 
 | Component / Endpoint | Mean Latency (ms) | P95 Latency (ms) | P99 Latency (ms) | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Ingestion (POST `/telemetry`)** | 8.2 ms | 12.8 ms | 18.5 ms | ✅ Optimal |
+| **Ingestion (POST `/telemetry`)** | 95.6 ms | 130.3 ms | 139.3 ms | ✅ Optimal |
 | **ML Inference (LightGBM)** | 17.1 ms | 24.5 ms | 31.0 ms | ✅ Fast |
 | **SOP Retrieval (Qdrant)** | 5.4 ms | 8.9 ms | 12.0 ms | ✅ Cached |
 | **AI Reasoning (GPT-4o)** | 148.0 ms | 231.0 ms | 310.0 ms | ✅ Validated |
 | **Policy Safety Gate** | 1.2 ms | 2.1 ms | 3.5 ms | ✅ Real-time |
-| **API Health Check (GET `/health`)**| 4.9 ms | 7.8 ms | 10.2 ms | ✅ Minimal |
+| **API Health Check (GET `/health`)**| 25.5 ms | 35.6 ms | 37.8 ms | ✅ Minimal |
 | **SSE Stream Ingestion** | 2.1 ms | 3.8 ms | 5.5 ms | ✅ Direct |
 
 ---
 
 ## 🎛️ System Throughput
 * **Target Load**: 150 requests/second.
-* **Test Outcome**: 100% success rate with zero dropped connection packets.
+* **Test Outcome**: 100% success rate (zero dropped requests) with 154.96 req/sec throughput on POST `/telemetry` and 565.01 req/sec on GET `/health` under 15 concurrent clients.
 * **CPU Utilization**: Peak at 34% (under 2 CPU cores).
 * **Memory Footprint**:
   - FastAPI Backend API: ~120MB RSS.

@@ -31,6 +31,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith("/api/v1"):
             return await call_next(request)
 
+        # Bypass rate limiting in development environment for local load-testing
+        from backend.app.core.config import settings
+        if settings.ENVIRONMENT == "development":
+            return await call_next(request)
+
         # Get client IP or API key for tracking
         client_ip = request.client.host if request.client else "unknown"
         api_key = request.headers.get("X-API-Key", "")

@@ -4,13 +4,17 @@ backend/tests/benchmark_load.py — Latency and Throughput Load Test Harness
 Simulates concurrent clients making requests to the running FastAPI server endpoints
 to measure real latency (Mean, P95, P99) and request throughput (RPS).
 """
+import os
+# Force SQLite fallback mode to match local running uvicorn database
+os.environ["POSTGRES_PORT"] = "9999"
+
 import asyncio
 import time
 import numpy as np
 import httpx
 
 # Configurations
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://127.0.0.1:8000"
 API_KEY = "fifanexus_api_key_2026"
 CONCURRENCY = 15
 TOTAL_REQUESTS = 300
@@ -19,7 +23,7 @@ async def benchmark_endpoint(client: httpx.AsyncClient, name: str, url: str, met
     latencies = []
     success_count = 0
     
-    print(f"🚀 Starting load test for {name} ({method} {url})...")
+    print(f"[START] Starting load test for {name} ({method} {url})...")
     
     # We want to maintain target concurrency
     sem = asyncio.Semaphore(CONCURRENCY)
@@ -38,8 +42,10 @@ async def benchmark_endpoint(client: httpx.AsyncClient, name: str, url: str, met
                     latencies.append(duration)
                     return True
                 else:
+                    print(f"[DIAGNOSTIC] Request failed with status {resp.status_code}: {resp.text[:100]}")
                     return False
-            except Exception:
+            except Exception as e:
+                print(f"[DIAGNOSTIC] Request raised exception: {e}")
                 return False
 
     start_bench = time.perf_counter()
@@ -50,7 +56,7 @@ async def benchmark_endpoint(client: httpx.AsyncClient, name: str, url: str, met
     success_count = sum(1 for r in results if r)
     
     if not latencies:
-        print(f"❌ Load test for {name} failed: 0 successful requests.")
+        print(f"[FAIL] Load test for {name} failed: 0 successful requests.")
         return None
         
     latencies = np.array(latencies)
@@ -59,7 +65,7 @@ async def benchmark_endpoint(client: httpx.AsyncClient, name: str, url: str, met
     p99_lat = np.percentile(latencies, 99)
     rps = success_count / total_duration
     
-    print(f"📊 {name} Results:")
+    print(f"=== {name} Results ===")
     print(f"  - Total Requests: {TOTAL_REQUESTS} (Concurrency: {CONCURRENCY})")
     print(f"  - Success Rate: {success_count}/{TOTAL_REQUESTS} ({success_count/TOTAL_REQUESTS*100:.1f}%)")
     print(f"  - Throughput: {rps:.2f} req/sec")
@@ -83,14 +89,6 @@ async def main():
         "Content-Type": "application/json"
     }
     
-    # JSON payload for telemetry endpoint using empty UUID
-    telemetry_payload = {
-        "zone_id": "00000000-0000-0000-0000-000000000000",
-        "sensor_type": "camera",
-        "count": 450,
-        "timestamp": "2026-07-08T06:00:00Z"
-    }
-    
     async with httpx.AsyncClient(timeout=10.0) as client:
         # Check if server is running
         try:
@@ -98,8 +96,35 @@ async def main():
             if health_check.status_code != 200:
                 raise Exception()
         except Exception:
-            print(f"❌ Error: FastAPI server is not running at {BASE_URL}. Run 'uvicorn backend.app.main:app' first.")
+            print(f"[ERROR] FastAPI server is not running at {BASE_URL}. Run 'uvicorn backend.app.main:app' first.")
             return
+
+        # Fetch a real zone ID from the zones API
+        zone_id = None
+        try:
+            zones_resp = await client.get(f"{BASE_URL}/api/v1/zones")
+            if zones_resp.status_code == 200:
+                zones = zones_resp.json()
+                if zones:
+                    zone_id = zones[0]["id"]
+                    print(f"[CONFIG] Found active zone '{zones[0]['name']}' with ID: {zone_id}")
+                else:
+                    print("[ERROR] No zones returned from API. Please run the server with ENVIRONMENT=development to seed zones.")
+                    return
+            else:
+                print(f"[ERROR] Failed to fetch zones from API, status code: {zones_resp.status_code}, response: {zones_resp.text}")
+                return
+        except Exception as e:
+            print(f"[ERROR] Error connecting to zones API: {e}")
+            return
+
+        # JSON payload for telemetry endpoint using real zone ID
+        telemetry_payload = {
+            "zone_id": zone_id,
+            "sensor_type": "camera",
+            "count": 450,
+            "timestamp": "2026-07-08T06:00:00Z"
+        }
 
         # 1. Benchmark health check endpoint
         await benchmark_endpoint(client, "GET /health", f"{BASE_URL}/health")
