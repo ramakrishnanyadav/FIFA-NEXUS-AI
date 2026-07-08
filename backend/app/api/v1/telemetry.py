@@ -11,7 +11,7 @@ from backend.app.core.auth import verify_api_key
 
 from typing import Annotated
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@router.post("", status_code=status.HTTP_202_ACCEPTED, responses={404: {"description": "Zone not found"}})
 async def ingest_telemetry(
     telemetry: TelemetryCreate,
     db: Annotated[AsyncSession, Depends(get_db)],

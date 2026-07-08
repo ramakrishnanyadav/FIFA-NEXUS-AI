@@ -99,7 +99,7 @@ async def list_tasks(
 
 from backend.app.core.auth import verify_api_key
 
-@router.patch("/{task_id}", response_model=TaskResponse)
+@router.patch("/{task_id}", response_model=TaskResponse, responses={404: {"description": "Task not found"}})
 async def update_task_status(
     task_id: uuid.UUID,
     task_update: TaskUpdate,

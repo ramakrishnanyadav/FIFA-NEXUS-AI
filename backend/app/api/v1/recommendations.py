@@ -95,7 +95,69 @@ async def get_recommendation_stats(
 
 from backend.app.core.auth import verify_api_key
 
-@router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK)
+async def _get_idempotency_cache(redis_client: aioredis.Redis, idempotency_key: uuid.UUID | None) -> dict | None:
+    if not (idempotency_key and USE_REDIS):
+        return None
+    idemp_redis_key = f"idempotency:apply:{idempotency_key}"
+    try:
+        cached_val = await redis_client.get(idemp_redis_key)
+        if cached_val:
+            return json.loads(cached_val)
+    except Exception as e:
+        from backend.app.core.logging import logger
+        logger.warning(f"Idempotency cache read failed: {e}")
+    return None
+
+async def _set_idempotency_cache(redis_client: aioredis.Redis, idempotency_key: uuid.UUID | None, response_payload: dict):
+    if not (idempotency_key and USE_REDIS):
+        return
+    idemp_redis_key = f"idempotency:apply:{idempotency_key}"
+    try:
+        await redis_client.setex(
+            idemp_redis_key,
+            86400,
+            json.dumps(response_payload)
+        )
+    except Exception as e:
+        from backend.app.core.logging import logger
+        logger.warning(f"Idempotency cache write failed: {e}")
+
+async def _create_and_dispatch_tasks(db: AsyncSession, redis_client: aioredis.Redis, rec: Recommendation) -> list[uuid.UUID]:
+    created_tasks = []
+    from backend.app.core.database import local_pubsub_bus
+    for action in rec.candidate_actions:
+        task_id = uuid.uuid4()
+        task = Task(
+            id=task_id,
+            recommendation_id=rec.id,
+            assigned_user_id=None,
+            assigned_role=rec.target_role if rec.target_role in ["VOLUNTEER", "SECURITY"] else "VOLUNTEER",
+            details=action,
+            status="DISPATCHED",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        db.add(task)
+        created_tasks.append(task_id)
+
+        task_alert = {
+            "id": str(task_id),
+            "details": action,
+            "role": task.assigned_role,
+            "status": "DISPATCHED"
+        }
+        if USE_REDIS:
+            try:
+                await redis_client.publish("tasks:stream", json.dumps(task_alert))
+            except Exception as e:
+                from backend.app.core.logging import logger
+                logger.warning(f"Failed to publish task stream alert to Redis: {e}")
+                local_pubsub_bus.publish(json.dumps(task_alert))
+        else:
+            local_pubsub_bus.publish(json.dumps(task_alert))
+    return created_tasks
+
+@router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}})
 async def apply_recommendation(
     recommendation_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -103,18 +165,10 @@ async def apply_recommendation(
     _: Annotated[str, Depends(verify_api_key)],
     idempotency_key: uuid.UUID | None = Header(None, alias="Idempotency-Key")
 ):
-    # 1. Idempotency Check (with Redis offline fallback)
-    idemp_redis_key = None
-    if idempotency_key and USE_REDIS:
-        idemp_redis_key = f"idempotency:apply:{idempotency_key}"
-        try:
-            cached_val = await redis_client.get(idemp_redis_key)
-            if cached_val:
-                return json.loads(cached_val)
-        except Exception as e:
-            from backend.app.core.logging import logger
-            logger.warning(f"Idempotency cache read failed: {e}")
-
+    # 1. Idempotency Check
+    cached_val = await _get_idempotency_cache(redis_client, idempotency_key)
+    if cached_val:
+        return cached_val
 
     try:
         # 2. Fetch Recommendation
@@ -132,45 +186,13 @@ async def apply_recommendation(
                 detail="Cannot apply recommendation with validation_status=POLICY_VIOLATION due to active safety policy breaches."
             )
 
-        # 3. Transition State to APPROVED & DISPATCHED
+        # 3. Transition State
         rec.validation_status = "APPROVED"
         rec.accepted = True
         rec.applied = True
 
-        # 4. Generate & Dispatch Tasks based on Candidate Actions
-        created_tasks = []
-        for action in rec.candidate_actions:
-            task_id = uuid.uuid4()
-            task = Task(
-                id=task_id,
-                recommendation_id=rec.id,
-                assigned_user_id=None,  # Available to be claimed
-                assigned_role=rec.target_role if rec.target_role in ["VOLUNTEER", "SECURITY"] else "VOLUNTEER",
-                details=action,
-                status="DISPATCHED",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            db.add(task)
-            created_tasks.append(task_id)
-
-            # Publish task notifications to Redis channel for SSE (with fallback)
-            task_alert = {
-                "id": str(task_id),
-                "details": action,
-                "role": task.assigned_role,
-                "status": "DISPATCHED"
-            }
-            from backend.app.core.database import local_pubsub_bus
-            if USE_REDIS:
-                try:
-                    await redis_client.publish("tasks:stream", json.dumps(task_alert))
-                except Exception as e:
-                    from backend.app.core.logging import logger
-                    logger.warning(f"Failed to publish task stream alert to Redis: {e}")
-                    local_pubsub_bus.publish(json.dumps(task_alert))
-            else:
-                local_pubsub_bus.publish(json.dumps(task_alert))
+        # 4. Create & Dispatch Tasks
+        created_tasks = await _create_and_dispatch_tasks(db, redis_client, rec)
 
         await db.commit()
 
@@ -180,19 +202,8 @@ async def apply_recommendation(
             "dispatched_tasks": [str(t_id) for t_id in created_tasks]
         }
 
-        # Cache for Idempotency (24 hours TTL)
-        if idempotency_key and idemp_redis_key and USE_REDIS:
-            try:
-                await redis_client.setex(
-                    idemp_redis_key,
-                    86400,
-                    json.dumps(response_payload)
-                )
-            except Exception as e:
-                from backend.app.core.logging import logger
-                logger.warning(f"Idempotency cache write failed: {e}")
-
-
+        # 5. Cache response for idempotency
+        await _set_idempotency_cache(redis_client, idempotency_key, response_payload)
 
         return response_payload
 
@@ -207,7 +218,7 @@ async def apply_recommendation(
             detail="Failed to apply recommendation. Please try again."
         )
 
-@router.post("/{recommendation_id}/feedback", status_code=status.HTTP_200_OK)
+@router.post("/{recommendation_id}/feedback", status_code=status.HTTP_200_OK, responses={404: {"description": "Recommendation not found"}})
 async def submit_feedback(
     recommendation_id: uuid.UUID,
     feedback: RecommendationFeedback,
