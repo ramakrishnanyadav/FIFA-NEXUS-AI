@@ -1,4 +1,4 @@
-
+from typing import Annotated
 
 import uuid
 from datetime import datetime, timezone
@@ -15,10 +15,10 @@ router = APIRouter()
 
 @router.get("", response_model=list[RecommendationResponse])
 async def list_recommendations(
+    db: Annotated[AsyncSession, Depends(get_db)],
     trigger_event_id: uuid.UUID | None = None,
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db)
+    offset: int = Query(0, ge=0)
 ):
     try:
         query = select(Recommendation)
@@ -39,7 +39,7 @@ async def list_recommendations(
 
 @router.get("/stats", status_code=status.HTTP_200_OK)
 async def get_recommendation_stats(
-    db: AsyncSession = Depends(get_db)
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     try:
         query = select(Recommendation)
@@ -98,10 +98,10 @@ from backend.app.core.auth import verify_api_key
 @router.post("/{recommendation_id}/apply", status_code=status.HTTP_200_OK)
 async def apply_recommendation(
     recommendation_id: uuid.UUID,
-    idempotency_key: uuid.UUID | None = Header(None, alias="Idempotency-Key"),
-    db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client),
-    _: str = Depends(verify_api_key)
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
+    _: Annotated[str, Depends(verify_api_key)],
+    idempotency_key: uuid.UUID | None = Header(None, alias="Idempotency-Key")
 ):
     # 1. Idempotency Check (with Redis offline fallback)
     idemp_redis_key = None
@@ -211,8 +211,8 @@ async def apply_recommendation(
 async def submit_feedback(
     recommendation_id: uuid.UUID,
     feedback: RecommendationFeedback,
-    db: AsyncSession = Depends(get_db),
-    _: str = Depends(verify_api_key)
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[str, Depends(verify_api_key)]
 ):
     try:
         result = await db.execute(select(Recommendation).where(Recommendation.id == recommendation_id))

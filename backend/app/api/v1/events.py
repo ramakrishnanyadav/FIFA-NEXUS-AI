@@ -10,8 +10,29 @@ from backend.app.core.database import get_db, get_redis_client, local_pubsub_bus
 from backend.app.models.models import OperationalEvent
 from backend.app.schemas.schemas import OperationalEventCreate, OperationalEventResponse
 import asyncio
+from typing import Annotated
+from backend.app.core.auth import verify_api_key
 
 router = APIRouter()
+
+EVENTS_STREAM_CHANNEL = "events:stream"
+
+async def _stream_local(local_queue: asyncio.Queue):
+    while True:
+        try:
+            message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
+            yield f"event: operational_event\ndata: {message_data}\n\n"
+            local_queue.task_done()
+        except TimeoutError:
+            yield ": ping\n\n"
+
+async def _stream_redis(pubsub):
+    while True:
+        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+        if message:
+            yield f"event: operational_event\ndata: {message['data']}\n\n"
+        else:
+            yield ": ping\n\n"
 
 # SSE Generator reading from Redis Pub/Sub (with local memory fallback)
 async def event_generator(redis_client: aioredis.Redis):
@@ -21,7 +42,7 @@ async def event_generator(redis_client: aioredis.Redis):
     if USE_REDIS:
         try:
             pubsub = redis_client.pubsub()
-            await pubsub.subscribe("events:stream")
+            await pubsub.subscribe(EVENTS_STREAM_CHANNEL)
             yield "event: system\ndata: Connected to operational events stream\n\n"
         except Exception:
             local_queue = asyncio.Queue()
@@ -33,26 +54,18 @@ async def event_generator(redis_client: aioredis.Redis):
         yield "event: system\ndata: Connected to local operational events stream (Redis Offline Fallback)\n\n"
 
     try:
-        while True:
-            if local_queue is not None:
-                try:
-                    message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
-                    yield f"event: operational_event\ndata: {message_data}\n\n"
-                    local_queue.task_done()
-                except TimeoutError:
-                    yield ": ping\n\n"
-            else:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message:
-                    yield f"event: operational_event\ndata: {message['data']}\n\n"
-                else:
-                    yield ": ping\n\n"
+        if local_queue is not None:
+            async for event in _stream_local(local_queue):
+                yield event
+        else:
+            async for event in _stream_redis(pubsub):
+                yield event
     except Exception as e:
         yield f"event: error\ndata: {str(e)}\n\n"
     finally:
         if pubsub is not None:
             try:
-                await pubsub.unsubscribe("events:stream")
+                await pubsub.unsubscribe(EVENTS_STREAM_CHANNEL)
                 await pubsub.close()
             except Exception:
                 pass  # nosec B110
@@ -61,22 +74,19 @@ async def event_generator(redis_client: aioredis.Redis):
 
 @router.get("/stream")
 async def stream_operational_events(
-    redis_client: aioredis.Redis = Depends(get_redis_client)
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)]
 ):
     return StreamingResponse(
         event_generator(redis_client),
         media_type="text/event-stream"
     )
 
-
-from backend.app.core.auth import verify_api_key
-
 @router.post("", response_model=OperationalEventResponse, status_code=status.HTTP_201_CREATED)
 async def create_manual_event(
     event_in: OperationalEventCreate,
-    db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client),
-    _: str = Depends(verify_api_key)
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
+    _: Annotated[str, Depends(verify_api_key)]
 ):
     try:
         correlation_id = event_in.correlation_id or uuid.uuid4()
@@ -99,12 +109,11 @@ async def create_manual_event(
         # Publish event notification via Redis Pub/Sub for SSE (with local fallback)
         alert_msg = f"{event.event_type} reported by {event.source}: {json.dumps(event.payload)}"
         try:
-            await redis_client.publish("events:stream", alert_msg)
+            await redis_client.publish(EVENTS_STREAM_CHANNEL, alert_msg)
         except Exception as e:
             from backend.app.core.logging import logger
             logger.warning(f"Redis event publish failed: {e}. Falling back to local in-memory event bus.")
             local_pubsub_bus.publish(alert_msg)
-
 
         return event
     except Exception as e:
@@ -118,10 +127,10 @@ async def create_manual_event(
 
 @router.get("", response_model=list[OperationalEventResponse])
 async def list_operational_events(
+    db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    event_type: str | None = None,
-    db: AsyncSession = Depends(get_db)
+    event_type: str | None = None
 ):
     try:
         query = select(OperationalEvent)

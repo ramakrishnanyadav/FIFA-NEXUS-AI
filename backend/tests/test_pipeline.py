@@ -117,12 +117,12 @@ async def test_chat_assistant():
     
     # 1. Test Gate A status query (high capacity)
     req = ChatRequest(message="What is the status of Gate A?")
-    resp = await chat_assistant(req, db_mock)
+    resp = await chat_assistant(req, db_mock, "mock_api_key")
     assert resp.intent == "zone_status"
     assert "congested" in resp.response
     
     # 2. Test sustainability query
     req = ChatRequest(message="What is the green impact of the stadium?")
-    resp = await chat_assistant(req, db_mock)
+    resp = await chat_assistant(req, db_mock, "mock_api_key")
     assert resp.intent == "sustainability_info"
     assert "CO2" in resp.response

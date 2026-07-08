@@ -1,4 +1,4 @@
-
+from typing import Annotated
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -63,7 +63,7 @@ async def task_generator(redis_client: aioredis.Redis):
 
 @router.get("/stream")
 async def stream_tasks(
-    redis_client: aioredis.Redis = Depends(get_redis_client)
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)]
 ):
     return StreamingResponse(
         task_generator(redis_client),
@@ -72,11 +72,11 @@ async def stream_tasks(
 
 @router.get("", response_model=list[TaskResponse])
 async def list_tasks(
+    db: Annotated[AsyncSession, Depends(get_db)],
     role: str | None = None,
     task_status: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db)
+    offset: int = Query(0, ge=0)
 ):
     try:
         query = select(Task)
@@ -103,9 +103,9 @@ from backend.app.core.auth import verify_api_key
 async def update_task_status(
     task_id: uuid.UUID,
     task_update: TaskUpdate,
-    db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client),
-    _: str = Depends(verify_api_key)
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
+    _: Annotated[str, Depends(verify_api_key)]
 ):
     try:
         result = await db.execute(select(Task).where(Task.id == task_id))

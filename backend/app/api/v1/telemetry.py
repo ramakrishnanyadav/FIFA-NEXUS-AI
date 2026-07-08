@@ -9,12 +9,14 @@ router = APIRouter()
 
 from backend.app.core.auth import verify_api_key
 
+from typing import Annotated
+
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
 async def ingest_telemetry(
     telemetry: TelemetryCreate,
-    db: AsyncSession = Depends(get_db),
-    redis_client: aioredis.Redis = Depends(get_redis_client),
-    _: str = Depends(verify_api_key)
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
+    _: Annotated[str, Depends(verify_api_key)]
 ):
     try:
         result = await process_telemetry_input(db, redis_client, telemetry)

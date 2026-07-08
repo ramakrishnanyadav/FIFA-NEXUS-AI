@@ -19,8 +19,10 @@ class ZoneResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+from typing import Annotated
+
 @router.get("", response_model=list[ZoneResponseSchema])
-async def list_zones(db: AsyncSession = Depends(get_db)):
+async def list_zones(db: Annotated[AsyncSession, Depends(get_db)]):
     try:
         result = await db.execute(select(Zone).where(Zone.deleted_at.is_(None)))
         zones = result.scalars().all()

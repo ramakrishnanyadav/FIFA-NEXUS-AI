@@ -167,15 +167,15 @@ Generate a recommendation in this exact JSON schema:
         try:
             # OpenAI and Groq both support response_format=json_object
             # Featherless support varies by model — we strip code fences instead
-            kwargs = dict(
-                model=model_name,
-                messages=[
+            kwargs = {
+                "model": model_name,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3,
-                timeout=15.0
-            )
+                "temperature": 0.3,
+                "timeout": 15.0
+            }
             if provider_label in ("openai", "groq"):
                 kwargs["response_format"] = {"type": "json_object"}
 
