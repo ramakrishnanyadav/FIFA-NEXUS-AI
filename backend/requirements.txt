@@ -7,7 +7,7 @@ asyncpg==0.30.0
 geoalchemy2==0.17.0
 alembic==1.14.0
 redis==5.2.1
-qdrant-client==1.12.1
+qdrant-client==1.18.0
 openai==1.58.1
 lightgbm==4.5.0
 scikit-learn==1.6.0
