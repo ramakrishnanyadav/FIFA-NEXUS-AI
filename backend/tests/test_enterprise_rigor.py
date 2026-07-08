@@ -131,47 +131,70 @@ async def test_telemetry_ingestion_idempotency_stress():
     """
     Idempotency Stress Test: Ingests identical telemetry packets 50 times.
     Verifies that the database handles duplicate requests gracefully and prevents
-    multiple active recommendation triggers within the duplicate cooldown window.
+    multiple active recommendation triggers within the duplicate cooldown window
+    using a real in-memory SQLite database session.
     """
-    db_mock = AsyncMock()
-    redis_mock = AsyncMock()
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from backend.app.core.database import Base
+    from backend.app.models.models import Zone, ZoneOccupancySnapshot, OperationalEvent
     
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
+    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    
+    # Seed a real Zone
     zone_id = uuid.uuid4()
-    gate_mock = MagicMock()
-    gate_mock.id = zone_id
-    gate_mock.name = "Gate A"
-    gate_mock.safe_capacity = 1000
-    gate_mock.current_occupancy = 500
-    
-    def execute_side_effect(query):
-        q_str = str(query).lower()
-        res = MagicMock()
-        if "zone" in q_str and "snapshot" not in q_str and "event" not in q_str:
-            res.scalars().first.return_value = gate_mock
-        else:
-            res.scalars().first.return_value = None
-        return res
-    db_mock.execute.side_effect = execute_side_effect
-    
+    async with async_session() as session:
+        zone = Zone(
+            id=zone_id,
+            stadium_id=uuid.uuid4(),
+            name="Gate A",
+            zone_type="GATE",
+            safe_capacity=1000,
+            current_occupancy=500
+        )
+        session.add(zone)
+        await session.commit()
+
     from backend.app.services.telemetry import process_telemetry_input
+    timestamp = datetime.now(UTC)
     telemetry = TelemetryCreate(
         zone_id=zone_id,
         sensor_type="camera",
         count=950,
-        timestamp=datetime.now(UTC)
+        timestamp=timestamp
     )
     
     results = []
-    # Send 50 duplicate packets in a loop
-    for _ in range(50):
-        with patch("backend.app.services.recommend.generate_and_validate_recommendations") as mock_gen:
-            mock_gen.return_value = MagicMock(id=uuid.uuid4())
-            r = await process_telemetry_input(db_mock, redis_mock, telemetry)
-            results.append(r)
-            
+    # Send 50 duplicate packets sequentially using the same SQLite database session maker
+    with patch("backend.app.services.recommend.generate_and_validate_recommendations") as mock_gen:
+        mock_gen.return_value = MagicMock(id=uuid.uuid4())
+        
+        for _ in range(50):
+            async with async_session() as session:
+                r = await process_telemetry_input(session, AsyncMock(), telemetry)
+                results.append(r)
+                
+    # Verify the first call succeeds and triggers a CROWD_DENSITY_HIGH event
     assert results[0]["status"] == "success"
-    # Seeding database with event occurs on first tick, verifying db writes
-    assert db_mock.add.call_count >= 1
+    assert results[0]["event_triggered"] == "CROWD_DENSITY_HIGH"
+    
+    # Verify that the subsequent 49 calls bypass duplicate ingestion (idempotency safety check)
+    for i in range(1, 50):
+        assert results[i]["status"] == "success"
+        assert "Duplicate ingestion bypassed" in results[i]["message"]
+        assert results[i]["event_triggered"] is None
+        
+    # Verify database state: exactly 1 snapshot and 1 event created
+    async with async_session() as session:
+        from sqlalchemy.future import select
+        snaps = (await session.execute(select(ZoneOccupancySnapshot))).scalars().all()
+        events = (await session.execute(select(OperationalEvent))).scalars().all()
+        
+        assert len(snaps) == 1
+        assert len(events) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -182,46 +205,70 @@ async def test_concurrent_telemetry_ingestion():
     """
     Concurrency Test: Simulates 20 concurrent telemetry packets arriving
     simultaneously. Verifies that the ingest pipeline processes concurrently
-    without crashing or causing transaction locks.
+    and handles state updates robustly using a real shared-memory SQLite database.
     """
-    db_mock = AsyncMock()
-    redis_mock = AsyncMock()
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from backend.app.core.database import Base
+    from backend.app.models.models import Zone, ZoneOccupancySnapshot
     
+    # Configure shared-cache memory DB to support concurrent session connections
+    engine = create_async_engine("sqlite+aiosqlite:///file:memdb_concurrent?mode=memory&cache=shared&uri=true", future=True)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
+    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    
+    # Seed the Zone
     zone_id = uuid.uuid4()
-    gate_mock = MagicMock()
-    gate_mock.id = zone_id
-    gate_mock.name = "Gate A"
-    gate_mock.safe_capacity = 1000
-    gate_mock.current_occupancy = 500
-    
-    def execute_side_effect(query):
-        q_str = str(query).lower()
-        res = MagicMock()
-        if "zone" in q_str and "snapshot" not in q_str and "event" not in q_str:
-            res.scalars().first.return_value = gate_mock
-        else:
-            res.scalars().first.return_value = None
-        return res
-    db_mock.execute.side_effect = execute_side_effect
-    
+    async with async_session() as session:
+        zone = Zone(
+            id=zone_id,
+            stadium_id=uuid.uuid4(),
+            name="Gate A",
+            zone_type="GATE",
+            safe_capacity=1000,
+            current_occupancy=500
+        )
+        session.add(zone)
+        await session.commit()
+        
     from backend.app.services.telemetry import process_telemetry_input
-    telemetry = TelemetryCreate(
-        zone_id=zone_id,
-        sensor_type="camera",
-        count=950,
-        timestamp=datetime.now(UTC)
-    )
     
-    # Fire 20 requests concurrently via asyncio.gather and mock recommendation triggers
+    # We generate 20 requests with unique timestamps so they are not rejected as duplicates
+    # but run concurrently against the database
+    tasks = []
     with patch("backend.app.services.recommend.generate_and_validate_recommendations") as mock_gen:
         mock_gen.return_value = MagicMock(id=uuid.uuid4())
-        tasks = [process_telemetry_input(db_mock, redis_mock, telemetry) for _ in range(20)]
+        
+        for i in range(20):
+            # Unique timestamp per concurrent task
+            from datetime import timedelta
+            t = datetime.now(UTC) + timedelta(seconds=i)
+            telemetry = TelemetryCreate(
+                zone_id=zone_id,
+                sensor_type="camera",
+                count=950 + i,
+                timestamp=t
+            )
+            # Create a separate session for each concurrent task
+            async def run_task(telemetry_data):
+                async with async_session() as session:
+                    return await process_telemetry_input(session, AsyncMock(), telemetry_data)
+            tasks.append(run_task(telemetry))
+            
         results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    # Assert all concurrent runs succeeded
+        
+    # Assert all concurrent runs succeeded without transaction locks or crashes
     for r in results:
-        assert not isinstance(r, Exception)
+        assert not isinstance(r, Exception), f"Concurrent task raised an exception: {r}"
         assert r["status"] == "success"
+        
+    # Verify that snapshots were successfully recorded in the database
+    async with async_session() as session:
+        from sqlalchemy.future import select
+        snaps = (await session.execute(select(ZoneOccupancySnapshot))).scalars().all()
+        assert len(snaps) == 20
+
 
 
 # ---------------------------------------------------------------------------
