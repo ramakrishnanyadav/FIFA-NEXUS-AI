@@ -11,37 +11,40 @@ CRITICAL_POLICIES = [
 _MIN_ZONE_TOKEN_LEN = 3
 
 
+def _has_routing_verb(action_lower: str) -> bool:
+    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send", "move"]
+    for verb in routing_verbs:
+        match = re.search(rf"\b{verb}\w*\b", action_lower)
+        if not match:
+            continue
+        idx = match.start()
+        rest = action_lower[idx + len(match.group(0)):]
+        if any(prep in rest for prep in [" to ", " through ", " via ", " towards "]):
+            # Safety guard: if verb is 'move', ensure it refers to crowds/fans/people rather than objects
+            if verb == "move":
+                human_keywords = ["crowd", "fan", "people", "spectator", "visitor", "staff", "volunteer", "personnel", "pedestrian"]
+                if not any(kw in action_lower for kw in human_keywords):
+                    continue
+            return True
+    return False
+
+
+def _has_routing_noun(action_lower: str) -> bool:
+    target_nouns = ["path", "paths", "pathway", "pathways", "stairwell", "stairwells"]
+    has_noun = any(re.search(rf"\b{word}\b", action_lower) for word in target_nouns)
+    if has_noun:
+        if any(prep in action_lower for prep in [" to ", " through ", " via ", " towards "]):
+            return True
+    return False
+
+
 def _is_action_routing(action_lower: str) -> bool:
     """
     Determines if an action is a routing action directing crowd flow to a destination.
     A routing action should contain a routing verb followed by a destination preposition,
     or nouns like 'stairwell'/'path' that imply routing.
     """
-    # We exclude generic words like 'direct' (causes false positive on 'directional')
-    # and 'guide' (causes false positive on general guidance)
-    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send", "move"]
-    for verb in routing_verbs:
-        match = re.search(rf"\b{verb}\w*\b", action_lower)
-        if match:
-            idx = match.start()
-            rest = action_lower[idx + len(match.group(0)):]
-            if any(prep in rest for prep in [" to ", " through ", " via ", " towards "]):
-                # Safety guard: if verb is 'move', ensure it refers to crowds/fans/people rather than objects
-                if verb == "move":
-                    human_keywords = ["crowd", "fan", "people", "spectator", "visitor", "staff", "volunteer", "personnel", "pedestrian"]
-                    if not any(kw in action_lower for kw in human_keywords):
-                        continue
-                return True
-
-    # Nouns that implicitly define a routing action when a destination is involved.
-    # Match whole words only (using word boundaries) and verify there is a preposition context.
-    target_nouns = ["path", "paths", "pathway", "pathways", "stairwell", "stairwells"]
-    has_noun = any(re.search(rf"\b{word}\b", action_lower) for word in target_nouns)
-    if has_noun:
-        if any(prep in action_lower for prep in [" to ", " through ", " via ", " towards "]):
-            return True
-
-    return False
+    return _has_routing_verb(action_lower) or _has_routing_noun(action_lower)
 
 
 def _find_destination_ratios(
@@ -85,60 +88,6 @@ def _find_destination_ratios(
     return matched_ratios, unknown_destination_routed
 
 
-def _validate_single_action(
-    action: str,
-    source_zone_name: str,
-    zone_ratios: dict | None
-) -> list[str]:
-    """
-    Performs safety policy rule validation on a single candidate action.
-    Returns any triggered violation flag codes.
-    """
-    flags = []
-    action_lower = action.lower()
-
-    # ------------------------------------------------------------------
-    # RULE_SEC_01: Volunteers to security/hazard locations without police
-    # ------------------------------------------------------------------
-    is_volunteer = "volunteer" in action_lower
-    is_security_hazard = any(
-        k in action_lower
-        for k in ["fight", "security", "threat", "isolate", "fire", "generator room"]
-    )
-    has_police = (
-        "police" in action_lower
-        and "without police" not in action_lower
-        and "no police" not in action_lower
-    )
-    if is_volunteer and is_security_hazard and not has_police:
-        flags.append("RULE_SEC_01_VIOLATION")
-
-    # ------------------------------------------------------------------
-    # RULE_CROWD_02: Routing through over-capacity paths (> 85%)
-    # ------------------------------------------------------------------
-    is_routing = _is_action_routing(action_lower)
-
-    if is_routing:
-        # Guard 1: explicit high-percentage mention in the action text itself
-        high_percentage = any(f"{p}%" in action_lower for p in range(85, 101))
-        if high_percentage:
-            flags.append("RULE_CROWD_02_VIOLATION")
-        elif zone_ratios is not None:
-            dest_ratios, unknown_dest = _find_destination_ratios(
-                action_lower, source_zone_name, zone_ratios
-            )
-
-            # Guard 2: any matched destination is over-capacity
-            if any(r > 0.85 for r in dest_ratios):
-                flags.append("RULE_CROWD_02_VIOLATION")
-
-            # Guard 3: routing to an unrecognised destination — fail safe
-            elif unknown_dest:
-                flags.append("RULE_CROWD_02_UNKNOWN_DEST")
-
-    return flags
-
-
 def validate_policy_rules(
     candidate_actions: list[str],
     policy_flags: list[str],
@@ -162,13 +111,53 @@ def validate_policy_rules(
     activated_flags = list(policy_flags)
 
     for action in candidate_actions:
-        action_violations = _validate_single_action(action, source_zone_name, zone_ratios)
-        activated_flags.extend(action_violations)
+        action_lower = action.lower()
+
+        # ------------------------------------------------------------------
+        # RULE_SEC_01: Volunteers to security/hazard locations without police
+        # ------------------------------------------------------------------
+        is_volunteer = "volunteer" in action_lower
+        is_security_hazard = any(
+            k in action_lower
+            for k in ["fight", "security", "threat", "isolate", "fire", "generator room"]
+        )
+        has_police = (
+            "police" in action_lower
+            and "without police" not in action_lower
+            and "no police" not in action_lower
+        )
+        if is_volunteer and is_security_hazard and not has_police:
+            activated_flags.append("RULE_SEC_01_VIOLATION")
+
+        # ------------------------------------------------------------------
+        # RULE_CROWD_02: Routing through over-capacity paths (> 85%)
+        # ------------------------------------------------------------------
+        is_routing = _is_action_routing(action_lower)
+
+        if is_routing:
+            # Guard 1: explicit high-percentage mention in the action text itself
+            high_percentage = any(f"{p}%" in action_lower for p in range(85, 101))
+            if high_percentage:
+                activated_flags.append("RULE_CROWD_02_VIOLATION")
+                continue  # already violated, move on to next action
+
+            if zone_ratios is not None:
+                dest_ratios, unknown_dest = _find_destination_ratios(
+                    action_lower, source_zone_name, zone_ratios
+                )
+
+                # Guard 2: any matched destination is over-capacity
+                if any(r > 0.85 for r in dest_ratios):
+                    activated_flags.append("RULE_CROWD_02_VIOLATION")
+
+                # Guard 3: routing to an unrecognised destination — fail safe
+                elif unknown_dest:
+                    activated_flags.append("RULE_CROWD_02_UNKNOWN_DEST")
 
     # Consolidate: any flag ending in _VIOLATION triggers POLICY_VIOLATION;
     # _UNKNOWN_DEST is also treated as a policy violation (fail-safe)
     if any(
-        f.endswith("_VIOLATION") or f.endswith("_UNKNOWN_DEST")
+        f.endswith(("_VIOLATION", "_UNKNOWN_DEST"))
         for f in activated_flags
     ):
         return "POLICY_VIOLATION", activated_flags

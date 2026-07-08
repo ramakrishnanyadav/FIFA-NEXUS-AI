@@ -139,7 +139,7 @@
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2" id="map-heading">
                     <span>🏟️</span> Stadium Spatial Map (Hard Rock Stadium)
                 </h2>
-                <div class="flex-1 flex items-center justify-center relative bg-slate-950/60 rounded-xl border border-gray-800" role="region" aria-labelledby="map-heading">
+                <section class="flex-1 flex items-center justify-center relative bg-slate-950/60 rounded-xl border border-gray-800" aria-labelledby="map-heading">
                     <!-- Styled Interactive Map Layout -->
                     <svg viewBox="0 0 800 400" class="w-full h-full max-h-[300px]">
                         <!-- Definitions for markers -->
@@ -188,7 +188,7 @@
                         <div class="flex items-center gap-1.5"><span class="h-3 w-3 bg-[#F59E0B] rounded-full"></span> Elevated (> 70%)</div>
                         <div class="flex items-center gap-1.5"><span class="h-3 w-3 bg-[#EF4444] rounded-full text-red-500 glow-red"></span> Breach (> 80%)</div>
                     </div>
-                </div>
+                </section>
             </div>
 
             <!-- Zones Status Grid & Ingestion Controls -->
@@ -200,9 +200,9 @@
                             <span>📊 Real-time Zone State</span>
                             <span class="text-xs text-gray-400">Redis Cache Source</span>
                         </h2>
-                        <div class="space-y-4" id="zones-list-container" role="region" aria-labelledby="metrics-heading">
+                        <section class="space-y-4" id="zones-list-container" aria-labelledby="metrics-heading">
                             <div class="text-gray-400 text-sm py-4 text-center">Loading zones operational state...</div>
-                        </div>
+                        </section>
                     </div>
                 </div>
 
@@ -211,7 +211,7 @@
                     <h2 class="text-lg font-bold mb-4" id="sim-heading">⚙️ Simulation Control Center</h2>
                     <p class="text-sm text-gray-400 mb-6">Trigger synthetic telemetry and incident events to evaluate AI and Optimization reasoning flows.</p>
                     
-                    <div class="space-y-4" role="region" aria-labelledby="sim-heading">
+                    <section class="space-y-4" aria-labelledby="sim-heading">
                         <div>
                             <span class="block text-xs font-semibold uppercase text-gray-400 mb-2">Simulate Telemetry Tick (Turnstiles)</span>
                             <div class="flex gap-2">
@@ -241,7 +241,7 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
