@@ -139,8 +139,13 @@ async def test_telemetry_ingestion_idempotency_stress():
     from backend.app.models.models import Zone, ZoneOccupancySnapshot, OperationalEvent
     
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    tables = [
+        Zone.__table__,
+        ZoneOccupancySnapshot.__table__,
+        OperationalEvent.__table__
+    ]
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables))
         
     async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     
@@ -209,12 +214,17 @@ async def test_concurrent_telemetry_ingestion():
     """
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
     from backend.app.core.database import Base
-    from backend.app.models.models import Zone, ZoneOccupancySnapshot
+    from backend.app.models.models import Zone, ZoneOccupancySnapshot, OperationalEvent
     
     # Configure shared-cache memory DB to support concurrent session connections
     engine = create_async_engine("sqlite+aiosqlite:///file:memdb_concurrent?mode=memory&cache=shared&uri=true", future=True)
+    tables = [
+        Zone.__table__,
+        ZoneOccupancySnapshot.__table__,
+        OperationalEvent.__table__
+    ]
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables))
         
     async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     
