@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any, Literal
 from pydantic import BaseModel, Field, EmailStr, field_validator
 from uuid import UUID
@@ -47,7 +47,7 @@ class TelemetryCreate(BaseModel):
     zone_id: UUID
     sensor_type: Literal["camera", "turnstile", "gate"] = Field(..., description="Type of sensor: camera, turnstile, gate")
     count: int = Field(..., ge=0, description="Measured count of entities (occupancy, wait count)")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 # Event Schemas
 class OperationalEventCreate(BaseModel):

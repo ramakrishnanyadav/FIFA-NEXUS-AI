@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from backend.app.models.models import Role, Permission, User, Stadium, Zone
@@ -61,7 +61,7 @@ async def seed_initial_data(db: AsyncSession):
             password_hash=_get_mock_hash("manager"), # nosec B106
             role_id=roles_dict["VENUE_MANAGER"].id,
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
         db.add(manager)
         print("Seeded User: manager_alpha")
@@ -77,7 +77,7 @@ async def seed_initial_data(db: AsyncSession):
             password_hash=_get_mock_hash("volunteer"), # nosec B106
             role_id=roles_dict["VOLUNTEER"].id,
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
         db.add(volunteer)
         print("Seeded User: volunteer_bob")
@@ -97,7 +97,7 @@ async def seed_initial_data(db: AsyncSession):
             name="Hard Rock Stadium",
             capacity=65000,
             location=point_geom,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
         db.add(stadium)
         print("Seeded Stadium: Hard Rock Stadium")

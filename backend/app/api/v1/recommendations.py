@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -134,8 +134,8 @@ async def _create_and_dispatch_tasks(db: AsyncSession, redis_client: aioredis.Re
             assigned_role=rec.target_role if rec.target_role in ["VOLUNTEER", "SECURITY"] else "VOLUNTEER",
             details=action,
             status="DISPATCHED",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC)
         )
         db.add(task)
         created_tasks.append(task_id)

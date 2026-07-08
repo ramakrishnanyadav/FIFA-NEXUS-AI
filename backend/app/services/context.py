@@ -7,6 +7,7 @@ from backend.app.services.predict import get_occupancy_prediction
 from backend.app.ai.vector import retrieve_relevant_procedures
 
 from backend.app.core.logging import logger
+from datetime import UTC
 
 async def build_operational_context(
     db: AsyncSession,
@@ -91,8 +92,8 @@ async def build_operational_context(
 
 
 def datetime_now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    from datetime import datetime
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 def datetime_to_iso(dt) -> str:
     return dt

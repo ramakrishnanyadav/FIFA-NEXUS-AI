@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
 from backend.app.models.models import Recommendation, OperationalEvent
@@ -72,7 +72,7 @@ async def generate_and_validate_recommendations(
         confidence=ai_output["confidence"],
         reasoning_summary=ai_output["reasoning_summary"],
         reasoning_time_ms=reasoning_time_ms,
-        generated_at=datetime.now(timezone.utc)
+        generated_at=datetime.now(UTC)
     )
 
     db.add(recommendation)

@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 def _now_utc():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 from sqlalchemy import (
     Column,
     String,
