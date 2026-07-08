@@ -60,6 +60,7 @@ jobs:
       - name: Run Tests with Coverage
         env:
           ENVIRONMENT: development
+          PYTHONPATH: .
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: postgres_test_password
           POSTGRES_DB: fifanexus
@@ -71,6 +72,7 @@ jobs:
           JWT_SECRET_KEY: nexus_jwt_dev_secret_2026_changeme_in_production
         run: |
           pytest --cov=backend/app --cov-report=xml --cov-report=html backend/tests/
+
 
       - name: Upload Coverage Results
         uses: actions/upload-artifact@v4
