@@ -398,7 +398,9 @@ def test_routing_classifier_substring_false_positives():
         "Clean the stairwell structure of dust.",
         "Deploy signage at Gate A entrance to alert fans of high density.",
         "Guide spectators to alternative Gates",
-        "The medical team will channel resources through triage."
+        "The medical team will channel resources through triage.",
+        "Move equipment to storage.",
+        "Move signage through the gate corridor."
     ]
 
     for case in non_routing_cases:
@@ -412,7 +414,9 @@ def test_routing_classifier_substring_false_positives():
         "Route fans to Gate B",
         "Direct crowd evacuation pathway to Gate B",
         "Redirect fans via Gate B exit pathways towards North Concourse",
-        "Send volunteers to support Gate B entry"
+        "Send volunteers to support Gate B entry",
+        "move crowd through the north stairwell",
+        "move fans to gate b"
     ]
 
     for case in routing_cases:

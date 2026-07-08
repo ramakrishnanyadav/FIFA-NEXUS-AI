@@ -19,13 +19,18 @@ def _is_action_routing(action_lower: str) -> bool:
     """
     # We exclude generic words like 'direct' (causes false positive on 'directional')
     # and 'guide' (causes false positive on general guidance)
-    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send"]
+    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send", "move"]
     for verb in routing_verbs:
         match = re.search(rf"\b{verb}\w*\b", action_lower)
         if match:
             idx = match.start()
             rest = action_lower[idx + len(match.group(0)):]
             if any(prep in rest for prep in [" to ", " through ", " via ", " towards "]):
+                # Safety guard: if verb is 'move', ensure it refers to crowds/fans/people rather than objects
+                if verb == "move":
+                    human_keywords = ["crowd", "fan", "people", "spectator", "visitor", "staff", "volunteer", "personnel", "pedestrian"]
+                    if not any(kw in action_lower for kw in human_keywords):
+                        continue
                 return True
 
     # Nouns that implicitly define a routing action when a destination is involved.
