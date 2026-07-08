@@ -70,7 +70,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-postgres_pass}@postgres:5432/${POSTGRES_DB:-fifanexus}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-fifanexus}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - API_KEY=${API_KEY:-fifanexus_api_key_2026}
