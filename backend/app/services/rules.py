@@ -19,7 +19,7 @@ def _is_action_routing(action_lower: str) -> bool:
     """
     # We exclude generic words like 'direct' (causes false positive on 'directional')
     # and 'guide' (causes false positive on general guidance)
-    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send", "move"]
+    routing_verbs = ["redirect", "route", "evacuate", "evacuation", "divert", "reroute", "steer", "send"]
     for verb in routing_verbs:
         match = re.search(rf"\b{verb}\w*\b", action_lower)
         if match:
