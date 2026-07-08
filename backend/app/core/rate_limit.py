@@ -49,6 +49,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if is_write:
+            print(f"[DEBUG LIMITER] Checking write limit for key: {key}. Existing requests count: {len(write_limiter.requests[key])}")
             if not write_limiter.is_allowed(key):
                 return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

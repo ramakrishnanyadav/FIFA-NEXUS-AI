@@ -21,6 +21,8 @@ async def ingest_telemetry(
         if result.get("status") == "error":
             raise HTTPException(status_code=404, detail=result.get("message"))
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         from backend.app.core.logging import logger
         logger.error(f"Telemetry ingestion error: {e}", exc_info=True)

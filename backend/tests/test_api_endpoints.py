@@ -101,12 +101,18 @@ def test_rate_limiter_write_limits(client):
     # TestClient requests can show up as client host 127.0.0.1, testclient, or unknown
     for key in ["127.0.0.1:fifanexus_api_key_2026", "testclient:fifanexus_api_key_2026", "unknown:fifanexus_api_key_2026"]:
         write_limiter.requests[key] = [now] * 35
-    
-    resp = client.post("/api/v1/telemetry", headers=headers, json={
-        "zone_id": str(uuid.uuid4()),
-        "sensor_type": "camera",
-        "count": 100
-    })
+    from backend.app.core.config import settings
+    old_env = settings.ENVIRONMENT
+    settings.ENVIRONMENT = "test"
+    try:
+        resp = client.post("/api/v1/telemetry", headers=headers, json={
+            "zone_id": str(uuid.uuid4()),
+            "sensor_type": "camera",
+            "count": 100
+        })
+    finally:
+        settings.ENVIRONMENT = old_env
+        
     assert resp.status_code == status.HTTP_429_TOO_MANY_REQUESTS
     assert "Too many requests" in resp.json()["detail"]
     
