@@ -44,9 +44,11 @@ env/
 *.sln
 *.sw?
 
-# Local environment configs
+# Local environment configs — .env.example is intentionally tracked
 .env
-.env.*
+.env.local
+.env.*.local
+!.env.example
 
 # Logs
 *.log

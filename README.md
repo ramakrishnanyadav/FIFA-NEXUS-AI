@@ -236,21 +236,34 @@ py -3.11 -m venv venv
 pip install -r backend/requirements.txt
 ```
 
-### Step 3 — Start ML Inference Service
+### Step 3 — Configure Environment (Required)
+```bash
+# macOS / Linux
+cp .env.example .env
+
+# Windows
+copy .env.example .env
+```
+> **The default `.env.example` is pre-configured with the demo API key `fifanexus_api_key_2026` and works out of the box.**
+> LLM keys are optional — the system runs fully on local heuristic fallbacks without them.
+> To use a real LLM, uncomment your preferred provider key (`OPENAI_API_KEY`, `GROQ_API_KEY`, or `FEATHERLESS_API_KEY`) in `.env`.
+
+### Step 4 — Start ML Inference Service
 ```bash
 python -m ml.src.inference
 ```
 
-### Step 4 — Start the Backend Server
+### Step 5 — Start the Backend Server
 ```bash
 python -m uvicorn backend.app.main:app --reload --port 8000
 ```
 > On first launch, the server automatically creates all schema tables and seeds stadium zones, roles, and mock accounts.
 
-### Step 5 — Open the Dashboard
+### Step 6 — Open the Dashboard
 ```
 http://localhost:8000
 ```
+> Enter the API key **`fifanexus_api_key_2026`** when prompted by the dashboard lock icon to unlock all write and recommendation endpoints.
 
 ---
 
