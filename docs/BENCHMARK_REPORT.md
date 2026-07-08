@@ -1,6 +1,11 @@
 # Performance Benchmarks & Reliability Metrics
 
-This report documents the performance benchmarks, latency profiles, machine learning model accuracy, and reliability results for the FIFA Nexus AI platform.
+This report documents the performance benchmarks, latency profiles, machine learning model accuracy, and reliability results for the FIFA Nexus AI platform. 
+
+To execute the load test and generate real-time metrics locally against a running backend server, execute the load-testing harness script:
+```bash
+python -m backend.tests.benchmark_load
+```
 
 ---
 
