@@ -74,9 +74,9 @@ async def stream_tasks(
 async def list_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     role: str | None = None,
-    task_status: str | None = Query(None, alias="status"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    task_status: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0
 ):
     try:
         query = select(Task)

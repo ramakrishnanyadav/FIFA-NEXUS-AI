@@ -17,8 +17,8 @@ router = APIRouter()
 async def list_recommendations(
     db: Annotated[AsyncSession, Depends(get_db)],
     trigger_event_id: uuid.UUID | None = None,
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0
 ):
     try:
         query = select(Recommendation)
