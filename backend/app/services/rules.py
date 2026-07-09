@@ -88,6 +88,45 @@ def _find_destination_ratios(
     return matched_ratios, unknown_destination_routed
 
 
+def _check_sec_01(action_lower: str) -> bool:
+    is_volunteer = "volunteer" in action_lower
+    is_security_hazard = any(
+        k in action_lower
+        for k in ["fight", "security", "threat", "isolate", "fire", "generator room"]
+    )
+    has_police = (
+        "police" in action_lower
+        and "without police" not in action_lower
+        and "no police" not in action_lower
+    )
+    return is_volunteer and is_security_hazard and not has_police
+
+
+def _check_crowd_02(action_lower: str, source_zone_name: str, zone_ratios: dict | None) -> str | None:
+    is_routing = _is_action_routing(action_lower)
+    if not is_routing:
+        return None
+
+    # Guard 1: explicit high-percentage mention in the action text itself
+    high_percentage = any(f"{p}%" in action_lower for p in range(85, 101))
+    if high_percentage:
+        return "RULE_CROWD_02_VIOLATION"
+
+    if zone_ratios is not None:
+        dest_ratios, unknown_dest = _find_destination_ratios(
+            action_lower, source_zone_name, zone_ratios
+        )
+
+        # Guard 2: any matched destination is over-capacity
+        if any(r > 0.85 for r in dest_ratios):
+            return "RULE_CROWD_02_VIOLATION"
+
+        # Guard 3: routing to an unrecognised destination — fail safe
+        if unknown_dest:
+            return "RULE_CROWD_02_UNKNOWN_DEST"
+    return None
+
+
 def validate_policy_rules(
     candidate_actions: list[str],
     policy_flags: list[str],
@@ -113,46 +152,12 @@ def validate_policy_rules(
     for action in candidate_actions:
         action_lower = action.lower()
 
-        # ------------------------------------------------------------------
-        # RULE_SEC_01: Volunteers to security/hazard locations without police
-        # ------------------------------------------------------------------
-        is_volunteer = "volunteer" in action_lower
-        is_security_hazard = any(
-            k in action_lower
-            for k in ["fight", "security", "threat", "isolate", "fire", "generator room"]
-        )
-        has_police = (
-            "police" in action_lower
-            and "without police" not in action_lower
-            and "no police" not in action_lower
-        )
-        if is_volunteer and is_security_hazard and not has_police:
+        if _check_sec_01(action_lower):
             activated_flags.append("RULE_SEC_01_VIOLATION")
 
-        # ------------------------------------------------------------------
-        # RULE_CROWD_02: Routing through over-capacity paths (> 85%)
-        # ------------------------------------------------------------------
-        is_routing = _is_action_routing(action_lower)
-
-        if is_routing:
-            # Guard 1: explicit high-percentage mention in the action text itself
-            high_percentage = any(f"{p}%" in action_lower for p in range(85, 101))
-            if high_percentage:
-                activated_flags.append("RULE_CROWD_02_VIOLATION")
-                continue  # already violated, move on to next action
-
-            if zone_ratios is not None:
-                dest_ratios, unknown_dest = _find_destination_ratios(
-                    action_lower, source_zone_name, zone_ratios
-                )
-
-                # Guard 2: any matched destination is over-capacity
-                if any(r > 0.85 for r in dest_ratios):
-                    activated_flags.append("RULE_CROWD_02_VIOLATION")
-
-                # Guard 3: routing to an unrecognised destination — fail safe
-                elif unknown_dest:
-                    activated_flags.append("RULE_CROWD_02_UNKNOWN_DEST")
+        crowd_flag = _check_crowd_02(action_lower, source_zone_name, zone_ratios)
+        if crowd_flag:
+            activated_flags.append(crowd_flag)
 
     # Consolidate: any flag ending in _VIOLATION triggers POLICY_VIOLATION;
     # _UNKNOWN_DEST is also treated as a policy violation (fail-safe)

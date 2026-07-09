@@ -558,44 +558,28 @@
             }
         }
 
-        // Translate the UI dynamically
-        function changeLanguage() {
-            let lang = document.getElementById('lang-selector').value;
-            const label = document.querySelector('label[for="lang-selector"]');
-            
-            if (lang === 'auto') {
-                // Detect browser locale
-                const browserLang = navigator.language || navigator.userLanguage || 'en';
-                let detectedName = "English";
-                if (browserLang.startsWith('es')) {
-                    lang = 'es';
-                    detectedName = "Español";
-                } else if (browserLang.startsWith('fr')) {
-                    lang = 'fr';
-                    detectedName = "Français";
-                } else {
-                    lang = 'en'; // default fallback
-                }
-                
-                if (label) label.innerText = `Language: Auto (${detectedName})`;
-                
-                // Append log event to indicate auto translation completed
-                const log = document.getElementById('events-log');
-                if (log && !log.innerHTML.includes("detected browser locale")) {
-                    const entry = document.createElement('div');
-                    entry.className = "text-emerald-400 font-semibold";
-                    entry.innerText = `[${new Date().toLocaleTimeString()}] [SYSTEM] AI Auto-Translate detected browser locale: "${browserLang}". UI dynamically translated.`;
-                    log.appendChild(entry);
-                    log.scrollTop = log.scrollHeight;
-                }
-            } else {
-                if (label) label.innerText = `Language:`;
+        function detectBrowserLanguage() {
+            const browserLang = navigator.language || navigator.userLanguage || 'en';
+            if (browserLang.startsWith('es')) {
+                return { lang: 'es', name: "Español", browserLang };
             }
-            
-            currentLanguage = lang;
-            const dict = TRANSLATIONS[currentLanguage];
-            
-            document.title = dict.title;
+            if (browserLang.startsWith('fr')) {
+                return { lang: 'fr', name: "Français", browserLang };
+            }
+            return { lang: 'en', name: "English", browserLang };
+        }
+
+        function appendAutoTranslateLog(browserLang) {
+            const log = document.getElementById('events-log');
+            if (!log || log.innerHTML.includes("detected browser locale")) return;
+            const entry = document.createElement('div');
+            entry.className = "text-emerald-400 font-semibold";
+            entry.innerText = `[${new Date().toLocaleTimeString()}] [SYSTEM] AI Auto-Translate detected browser locale: "${browserLang}". UI dynamically translated.`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function translateHeaderSections(dict) {
             const mapHeadingEl = document.getElementById('map-heading');
             if (mapHeadingEl) mapHeadingEl.innerHTML = `<span>🏟️</span> ${dict.mapHeading}`;
             
@@ -616,28 +600,54 @@
             if (aiElHeading && aiElHeading.querySelector('span')) {
                 aiElHeading.querySelector('span').innerText = dict.decisionSupport;
             }
-            
+        }
+
+        function translateDispatchAndContainers(dict) {
             const dispatchSection = document.querySelector('section[aria-label="Ground Dispatch queue"]');
             if (dispatchSection) {
-                if (dispatchSection.querySelector('h2 span')) {
-                    dispatchSection.querySelector('h2 span').innerText = dict.groundDispatch;
+                const titleSpan = dispatchSection.querySelector('h2 span');
+                if (titleSpan) {
+                    titleSpan.innerText = dict.groundDispatch;
                 }
-                if (dispatchSection.querySelector('h2 span.text-xs')) {
-                    dispatchSection.querySelector('h2 span.text-xs').innerText = dict.activeTasks;
+                const activeTasksSpan = dispatchSection.querySelector('h2 span.text-xs');
+                if (activeTasksSpan) {
+                    activeTasksSpan.innerText = dict.activeTasks;
                 }
             }
 
-            // Translate static monitoring text if empty recommendations
             const recContainer = document.getElementById('recommendations-container');
             if (recContainer && (recContainer.innerHTML.includes('monitoring mode') || recContainer.innerHTML.includes('monitoreo') || recContainer.innerHTML.includes('surveillance'))) {
                 recContainer.innerHTML = `<div class="text-gray-500 text-sm py-8">${dict.monitoringMode}</div>`;
             }
 
-            // Translate tasks text if empty
             const taskContainer = document.getElementById('tasks-container');
             if (taskContainer && (taskContainer.innerHTML.includes('dispatched') || taskContainer.innerHTML.includes('despachadas') || taskContainer.innerHTML.includes('expédiée'))) {
                 taskContainer.innerHTML = `<div class="col-span-3 text-center text-gray-500 text-sm py-4">${dict.noTasks}</div>`;
             }
+        }
+
+        // Translate the UI dynamically
+        function changeLanguage() {
+            let lang = document.getElementById('lang-selector').value;
+            const label = document.querySelector('label[for="lang-selector"]');
+            
+            if (lang === 'auto') {
+                const detection = detectBrowserLanguage();
+                lang = detection.lang;
+                if (label) {
+                    label.innerText = `Language: Auto (${detection.name})`;
+                }
+                appendAutoTranslateLog(detection.browserLang);
+            } else if (label) {
+                label.innerText = `Language:`;
+            }
+            
+            currentLanguage = lang;
+            const dict = TRANSLATIONS[currentLanguage];
+            
+            document.title = dict.title;
+            translateHeaderSections(dict);
+            translateDispatchAndContainers(dict);
         }
 
         // 1. Fetch zones operational state
@@ -774,73 +784,110 @@
             });
         }
 
+        const ZONE_MAP_IDS = {
+            "Gate A": "map-zone-gate-a",
+            "Gate B": "map-zone-gate-b",
+            "East Concourse": "map-zone-east-concourse",
+            "West Concourse": "map-zone-west-concourse",
+            "Transport Hub Alpha": "map-zone-transport-hub"
+        };
+
+        function getMapElementByZoneName(zoneName) {
+            const elementId = ZONE_MAP_IDS[zoneName];
+            return elementId ? document.getElementById(elementId) : null;
+        }
+
+        function updateSvgMapElement(zoneName, ratio) {
+            let color = "#10B981"; // green
+            if (ratio > 0.8) {
+                color = "#EF4444"; // red
+            } else if (ratio > 0.7) {
+                color = "#F59E0B"; // yellow
+            }
+
+            const mapElement = getMapElementByZoneName(zoneName);
+            if (!mapElement) return;
+
+            mapElement.setAttribute('fill', color);
+            mapElement.setAttribute('aria-label', `${zoneName} Status: Occupancy at ${Math.round(ratio*100)}%`);
+            if (ratio > 0.8) {
+                mapElement.classList.add('pulse-breach');
+            } else {
+                mapElement.classList.remove('pulse-breach');
+            }
+        }
+
+        function getZoneGridSettings(ratio) {
+            if (ratio > 0.8) {
+                return {
+                    colorClass: "text-red-500 font-bold animate-pulse",
+                    trendText: "↑ Critical",
+                    trendClass: "text-red-500 font-bold",
+                    etaText: "5 min",
+                    etaClass: "text-red-500 font-bold"
+                };
+            }
+            if (ratio > 0.6) {
+                return {
+                    colorClass: "text-amber-400 font-semibold",
+                    trendText: "↑ Rising",
+                    trendClass: "text-amber-400 font-semibold",
+                    etaText: "8 min",
+                    etaClass: "text-gray-300"
+                };
+            }
+            return {
+                colorClass: "text-emerald-400",
+                trendText: "Steady",
+                trendClass: "text-gray-300",
+                etaText: "--",
+                etaClass: "text-gray-300"
+            };
+        }
+
+        function updateZoneListRow(row, data, ratio, progressClass) {
+            const occEl = row.querySelector('[id^="zone-occ-"]');
+            const progressEl = row.querySelector('[id^="zone-progress-"]');
+            const trendEl = row.querySelector('[id^="zone-trend-"]');
+            const etaEl = row.querySelector('[id^="zone-eta-"]');
+            
+            const percent = Math.round(ratio*100);
+            const settings = getZoneGridSettings(ratio);
+            
+            if (occEl) {
+                occEl.innerHTML = `${data.current_occupancy} / ${data.safe_capacity} (<span class="${settings.colorClass} font-mono">${percent}%</span>)`;
+            }
+            if (progressEl) {
+                progressEl.style.width = `${Math.min(100, ratio*100)}%`;
+                progressEl.className = `${progressClass} h-1.5 rounded-full transition-all`;
+            }
+            if (trendEl) {
+                trendEl.innerText = settings.trendText;
+                trendEl.className = settings.trendClass;
+            }
+            if (etaEl) {
+                etaEl.innerText = settings.etaText;
+                etaEl.className = settings.etaClass;
+            }
+        }
+
         function updateZoneUI(data) {
             const ratio = data.current_occupancy / data.safe_capacity;
-            let color = "#10B981"; // green
             let progressClass = "bg-brand-success";
             
             if (ratio > 0.8) {
-                color = "#EF4444"; // red
                 progressClass = "bg-brand-danger";
             } else if (ratio > 0.7) {
-                color = "#F59E0B"; // yellow
                 progressClass = "bg-brand-warning";
             }
 
             // Update SVG map elements
-            let mapElement = null;
-            if (data.zone_name === "Gate A") mapElement = document.getElementById('map-zone-gate-a');
-            else if (data.zone_name === "Gate B") mapElement = document.getElementById('map-zone-gate-b');
-            else if (data.zone_name === "East Concourse") mapElement = document.getElementById('map-zone-east-concourse');
-            else if (data.zone_name === "West Concourse") mapElement = document.getElementById('map-zone-west-concourse');
-            else if (data.zone_name === "Transport Hub Alpha") mapElement = document.getElementById('map-zone-transport-hub');
-
-            if (mapElement) {
-                mapElement.setAttribute('fill', color);
-                mapElement.setAttribute('aria-label', `${data.zone_name} Status: Occupancy at ${Math.round(ratio*100)}%`);
-                if (ratio > 0.8) {
-                    mapElement.classList.add('pulse-breach');
-                } else {
-                    mapElement.classList.remove('pulse-breach');
-                }
-            }
+            updateSvgMapElement(data.zone_name, ratio);
 
             // Update List grid row text values
             document.querySelectorAll('[id^="zone-row-"]').forEach(row => {
                 if (row.innerHTML.includes(data.zone_name)) {
-                    const occEl = row.querySelector('[id^="zone-occ-"]');
-                    const progressEl = row.querySelector('[id^="zone-progress-"]');
-                    const trendEl = row.querySelector('[id^="zone-trend-"]');
-                    const etaEl = row.querySelector('[id^="zone-eta-"]');
-                    
-                    const percent = Math.round(ratio*100);
-                    let colorClass = "text-emerald-400";
-                    let trendText = "Steady";
-                    let etaText = "--";
-                    
-                    if (ratio > 0.8) {
-                        colorClass = "text-red-500 font-bold animate-pulse";
-                        trendText = "↑ Critical";
-                        etaText = "5 min";
-                    } else if (ratio > 0.6) {
-                        colorClass = "text-amber-400 font-semibold";
-                        trendText = "↑ Rising";
-                        etaText = "8 min";
-                    }
-                    
-                    if (occEl) occEl.innerHTML = `${data.current_occupancy} / ${data.safe_capacity} (<span class="${colorClass} font-mono">${percent}%</span>)`;
-                    if (progressEl) {
-                        progressEl.style.width = `${Math.min(100, ratio*100)}%`;
-                        progressEl.className = `${progressClass} h-1.5 rounded-full transition-all`;
-                    }
-                    if (trendEl) {
-                        trendEl.innerText = trendText;
-                        trendEl.className = ratio > 0.8 ? "text-red-500 font-bold" : (ratio > 0.6 ? "text-amber-400 font-semibold" : "text-gray-300");
-                    }
-                    if (etaEl) {
-                        etaEl.innerText = etaText;
-                        etaEl.className = ratio > 0.8 ? "text-red-500 font-bold" : "text-gray-300";
-                    }
+                    updateZoneListRow(row, data, ratio, progressClass);
                 }
             });
         }
