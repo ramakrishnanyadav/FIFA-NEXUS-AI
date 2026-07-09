@@ -126,12 +126,19 @@ async def health_check():
 
 @app.get("/version")
 async def version_endpoint():
-    import subprocess
+    import asyncio
     git_commit = "unknown"
     try:
-        git_commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+        process = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "--short", "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        if process.returncode == 0:
+            git_commit = stdout.decode("utf-8").strip()
     except Exception:
-        git_commit = os.getenv("RENDER_GIT_COMMIT", "ecfabca")
+        git_commit = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
 
     return {
         "version": "1.0.0",
