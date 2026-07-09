@@ -89,8 +89,10 @@ async def create_manual_event(
     _: Annotated[str, Depends(verify_api_key)]
 ):
     try:
-        correlation_id = event_in.correlation_id or uuid.uuid4()
-        trace_id = event_in.trace_id or f"tr-{uuid.uuid4().hex[:8]}"
+        from backend.app.core.logging import correlation_id_ctx
+        ctx_corr = correlation_id_ctx.get()
+        correlation_id = event_in.correlation_id or (uuid.UUID(ctx_corr) if ctx_corr else uuid.uuid4())
+        trace_id = event_in.trace_id or None
 
         event = OperationalEvent(
             id=uuid.uuid4(),

@@ -66,7 +66,9 @@ async def _handle_density_high_event(
         }
 
     # Create OperationalEvent
-    correlation_id = uuid.uuid4()
+    from backend.app.core.logging import correlation_id_ctx
+    ctx_corr = correlation_id_ctx.get()
+    correlation_id = uuid.UUID(ctx_corr) if ctx_corr else uuid.uuid4()
     event_payload = {
         "current_occupancy": telemetry.count,
         "safe_capacity": zone.safe_capacity,
@@ -82,7 +84,7 @@ async def _handle_density_high_event(
         payload=event_payload,
         received_at=telemetry.timestamp,
         correlation_id=correlation_id,
-        trace_id=f"tr-{uuid.uuid4().hex[:8]}"
+        trace_id=None
     )
     db.add(event_created)
     await db.commit() # Commit event to get ID reference

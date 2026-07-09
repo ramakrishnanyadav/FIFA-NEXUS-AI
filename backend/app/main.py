@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from backend.app.core.config import settings
 from backend.app.core.database import engine, Base, async_session_maker, USE_SQLITE, USE_REDIS
 from backend.app.core.seed import seed_initial_data
-from backend.app.core.logging import logger
+from backend.app.core.logging import logger, CorrelationIdMiddleware
 from backend.app.core.rate_limit import RateLimitMiddleware, SecurityHeadersMiddleware
 from backend.app.api import api_router
 
@@ -88,6 +88,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Correlation ID Middleware (outermost middleware added last)
+app.add_middleware(CorrelationIdMiddleware)
 
 # Include API Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
