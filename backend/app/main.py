@@ -105,13 +105,7 @@ app.add_middleware(CorrelationIdMiddleware)
 # Set CORS origins with strict domain access control — added last to run outermost in middleware execution order
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "https://fifa-nexus-ai.onrender.com",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -37,8 +37,16 @@ class Settings(BaseSettings):
     FEATHERLESS_MODEL: str = Field(default="meta-llama/Llama-3.3-70B-Instruct")
 
     # Security Configuration
-    # Security Configuration
     API_KEY: str = Field(default="")  # Set via API_KEY env var for API protection
+    CORS_ORIGINS: list[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8000",
+            "https://fifa-nexus-ai.onrender.com",
+        ]
+    )  # Override via CORS_ORIGINS env var (JSON list)
 
     @property
     def is_llm_configured(self) -> bool:
