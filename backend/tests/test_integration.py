@@ -11,14 +11,12 @@ Tests:
 
 import pytest
 import uuid
-import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.app.schemas.schemas import TelemetryCreate
 from backend.app.services.telemetry import process_telemetry_input
 from backend.app.services.context import build_operational_context
-from backend.app.services.recommend import generate_and_validate_recommendations
 from backend.app.services.optimizer import optimize_candidate_actions
 from backend.app.services.rules import validate_policy_rules
 from backend.app.ai.agents import generate_heuristic_recommendation, run_reasoning_agent
@@ -116,7 +114,7 @@ async def test_full_operational_pipeline():
             zone_id=zone_id,
             sensor_type="camera",
             count=870,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(UTC)
         )
         result = await process_telemetry_input(db_mock, redis_mock, telemetry)
 
@@ -203,12 +201,12 @@ async def test_full_operational_pipeline():
     assert task_mock.status == "COMPLETED", "Task should be completable"
 
     print("\n--- Full Operational Pipeline ---")
-    print(f"[OK] Telemetry ingested: count=870, threshold=800 -> CROWD_DENSITY_HIGH")
+    print("[OK] Telemetry ingested: count=870, threshold=800 -> CROWD_DENSITY_HIGH")
     print(f"[OK] Context built: risk={ctx['congestion_risk_score']}, SOPs={len(ctx['relevant_procedures'])}")
     print(f"[OK] Agent output: {len(agent_output['candidate_actions'])} actions, confidence={agent_output['confidence']:.2f}")
     print(f"[OK] Optimizer: score={optim['score']}, actions retained={len(optim['actions'])}")
     print(f"[OK] Policy gate: {status} (destination Gate B @ 40%)")
-    print(f"[OK] Task lifecycle: DISPATCHED -> COMPLETED")
+    print("[OK] Task lifecycle: DISPATCHED -> COMPLETED")
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +246,7 @@ async def test_chaos_graceful_degradation():
             zone_id=zone_id,
             sensor_type="camera",
             count=700,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(UTC)
         )
         result = await process_telemetry_input(db_mock, redis_mock, telemetry)
 
@@ -301,7 +299,7 @@ async def test_chaos_graceful_degradation():
         "ml_model_version": "fallback:heuristic:v1",
         "input_snapshot_hash": "abc123",
         "relevant_procedures": ["SOP-744: Activate Gate B bypass."],
-        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z")
     }
 
     with patch("backend.app.ai.agents._get_llm_clients") as mock_clients:

@@ -95,7 +95,7 @@ async def main():
         try:
             health_check = await client.get(f"{BASE_URL}/health")
             if health_check.status_code != 200:
-                raise Exception()
+                raise RuntimeError("Health check returned status code other than 200")
         except Exception:
             print(f"[ERROR] FastAPI server is not running at {BASE_URL}. Run 'uvicorn backend.app.main:app' first.")
             return

@@ -1,9 +1,9 @@
 import pytest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 from fastapi import status
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from backend.app.main import app
 from backend.app.core.config import settings
 
@@ -101,7 +101,6 @@ def test_rate_limiter_write_limits(client):
     # TestClient requests can show up as client host 127.0.0.1, testclient, or unknown
     for key in ["127.0.0.1:fifanexus_api_key_2026", "testclient:fifanexus_api_key_2026", "unknown:fifanexus_api_key_2026"]:
         write_limiter.requests[key] = [now] * 35
-    from backend.app.core.config import settings
     old_env = settings.ENVIRONMENT
     settings.ENVIRONMENT = "test"
     try:
@@ -162,8 +161,8 @@ async def test_get_tasks_endpoint(client):
     task_mock.assigned_role = "VOLUNTEER"
     task_mock.details = "Deploy signage at Gate A"
     task_mock.status = "PENDING"
-    task_mock.created_at = datetime.now(timezone.utc)
-    task_mock.updated_at = datetime.now(timezone.utc)
+    task_mock.created_at = datetime.now(UTC)
+    task_mock.updated_at = datetime.now(UTC)
 
     db_execute_mock = MagicMock()
     db_execute_mock.scalars().all.return_value = [task_mock]

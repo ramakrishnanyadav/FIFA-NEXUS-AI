@@ -1,7 +1,6 @@
 
 import pytest
 import math
-from typing import List
 from backend.app.services.rules import validate_policy_rules
 from backend.app.services.optimizer import optimize_candidate_actions
 
@@ -55,43 +54,43 @@ def _run_inference_prediction(scenario: dict) -> int:
     return result.predicted_occupancy_15m
 
 
-def calculate_mae(predictions: List[int], actuals: List[int]) -> float:
+def calculate_mae(predictions: list[int], actuals: list[int]) -> float:
     n = len(predictions)
     if n == 0:
         return 0.0
-    return sum(abs(p - a) for p, a in zip(predictions, actuals)) / n
+    return sum(abs(p - a) for p, a in zip(predictions, actuals, strict=False)) / n
 
 
-def calculate_rmse(predictions: List[int], actuals: List[int]) -> float:
+def calculate_rmse(predictions: list[int], actuals: list[int]) -> float:
     n = len(predictions)
     if n == 0:
         return 0.0
-    sum_squares = sum((p - a) ** 2 for p, a in zip(predictions, actuals))
+    sum_squares = sum((p - a) ** 2 for p, a in zip(predictions, actuals, strict=False))
     return math.sqrt(sum_squares / n)
 
 
-def calculate_mape(predictions: List[int], actuals: List[int]) -> float:
+def calculate_mape(predictions: list[int], actuals: list[int]) -> float:
     """Mean Absolute Percentage Error — expressed as a fraction (0.142 = 14.2%)."""
-    pairs = [(p, a) for p, a in zip(predictions, actuals) if a != 0]
+    pairs = [(p, a) for p, a in zip(predictions, actuals, strict=False) if a != 0]
     if not pairs:
         return 0.0
     return sum(abs(p - a) / abs(a) for p, a in pairs) / len(pairs)
 
 
-def calculate_r_squared(predictions: List[int], actuals: List[int]) -> float:
+def calculate_r_squared(predictions: list[int], actuals: list[int]) -> float:
     """Coefficient of Determination (R²). 1.0 = perfect fit."""
     n = len(actuals)
     if n == 0:
         return 0.0
     mean_actual = sum(actuals) / n
     ss_tot = sum((a - mean_actual) ** 2 for a in actuals)
-    ss_res = sum((p - a) ** 2 for p, a in zip(predictions, actuals))
+    ss_res = sum((p - a) ** 2 for p, a in zip(predictions, actuals, strict=False))
     return 1.0 - (ss_res / ss_tot) if ss_tot != 0 else 0.0
 
 
-def calculate_median_ae(predictions: List[int], actuals: List[int]) -> float:
+def calculate_median_ae(predictions: list[int], actuals: list[int]) -> float:
     """Median Absolute Error — robust to outliers."""
-    errors = sorted(abs(p - a) for p, a in zip(predictions, actuals))
+    errors = sorted(abs(p - a) for p, a in zip(predictions, actuals, strict=False))
     n = len(errors)
     if n == 0:
         return 0.0
@@ -99,9 +98,9 @@ def calculate_median_ae(predictions: List[int], actuals: List[int]) -> float:
     return (errors[mid] + errors[~mid]) / 2.0
 
 
-def calculate_p95_ae(predictions: List[int], actuals: List[int]) -> float:
+def calculate_p95_ae(predictions: list[int], actuals: list[int]) -> float:
     """95th-percentile absolute error — worst-case operational bound."""
-    errors = sorted(abs(p - a) for p, a in zip(predictions, actuals))
+    errors = sorted(abs(p - a) for p, a in zip(predictions, actuals, strict=False))
     if not errors:
         return 0.0
     idx = min(int(math.ceil(0.95 * len(errors))) - 1, len(errors) - 1)
@@ -131,7 +130,7 @@ def test_ml_prediction_accuracy():
     p95_ae = calculate_p95_ae(predictions, actuals)
 
     # Compute relative MAE for each zone (error as % of zone capacity)
-    relative_errors = [abs(p - a) / c for p, a, c in zip(predictions, actuals, capacities)]
+    relative_errors = [abs(p - a) / c for p, a, c in zip(predictions, actuals, capacities, strict=False)]
     mean_relative_mae = sum(relative_errors) / len(relative_errors)
 
     print("\n--- ML Prediction Accuracy Metrics ---")
@@ -163,35 +162,34 @@ def test_ml_prediction_accuracy():
         f"R-Squared {r_squared:.4f} is below 0.80 — model fit is insufficient"
     )
 
+def _evaluate_case(case):
+    action = case["action"]
+    zone_ratios = case.get("zone_ratios", None)
+    status, _ = validate_policy_rules([action], [], zone_ratios=zone_ratios)
+    actual_safe = 1 if status == "VALIDATED" else 0
+    return case["expected"], actual_safe
+
+
 def test_policy_validator_precision_recall():
     """
     Evaluates the accuracy of the Deterministic Policy Validation Engine.
     Computes precision, recall, and false alert metrics.
     """
-    true_positives = 0  # Correctly flagged violations
-    false_positives = 0 # Safe actions incorrectly flagged as violations
-    true_negatives = 0  # Safe actions correctly validated
-    false_negatives = 0 # Violations missed by the engine
+    counters = {
+        (0, 0): 0,  # true_positives
+        (0, 1): 0,  # false_negatives
+        (1, 1): 0,  # true_negatives
+        (1, 0): 0   # false_positives
+    }
 
     for case in VALIDATION_TEST_CASES:
-        action = case["action"]
-        expected_safe = case["expected"]
-        zone_ratios = case.get("zone_ratios", None)
-        
-        # Run rules check
-        status, flags = validate_policy_rules([action], [], zone_ratios=zone_ratios)
-        actual_safe = 1 if status == "VALIDATED" else 0
-        
-        if expected_safe == 0:  # Violation case
-            if actual_safe == 0:
-                true_positives += 1
-            else:
-                false_negatives += 1
-        else:  # Safe case
-            if actual_safe == 1:
-                true_negatives += 1
-            else:
-                false_positives += 1
+        expected_safe, actual_safe = _evaluate_case(case)
+        counters[(expected_safe, actual_safe)] += 1
+
+    true_positives = counters[(0, 0)]
+    false_negatives = counters[(0, 1)]
+    true_negatives = counters[(1, 1)]
+    false_positives = counters[(1, 0)]
 
     precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 1.0
     recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 1.0

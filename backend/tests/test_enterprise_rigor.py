@@ -35,7 +35,6 @@ def test_schema_contracts():
     db_mock = AsyncMock()
     db_mock.execute.return_value = db_execute_mock
     
-    from backend.app.core.database import get_db
     app.dependency_overrides[get_db] = lambda: db_mock
     try:
         response = client.get("/api/v1/zones")
@@ -115,8 +114,9 @@ async def test_database_transaction_rollback():
     
     with patch("backend.app.services.recommend.generate_and_validate_recommendations") as mock_gen:
         mock_gen.return_value = MagicMock(id=uuid.uuid4())
+        async_mock_callback = AsyncMock()
         with pytest.raises(Exception, match="DB Commit Failed"):
-            await process_telemetry_input(db_mock, AsyncMock(), telemetry)
+            await process_telemetry_input(db_mock, async_mock_callback, telemetry)
     
     # Assert transaction integrity: rollback was called
     db_mock.rollback.assert_called_once()

@@ -1449,11 +1449,11 @@
     </script>
 
     <!-- Floating AI Assistant Chat Bubble & Card -->
-    <div id="ai-chat-bubble" onclick="toggleChatWindow()" onkeydown="if(event.key==='Enter'||event.key===' '){toggleChatWindow();event.preventDefault();}" role="button" tabindex="0" class="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-700 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all z-50 cursor-pointer border border-indigo-500/30" aria-label="Open AI Assistant Chat">
+    <button type="button" id="ai-chat-bubble" onclick="toggleChatWindow()" onkeydown="if(event.key==='Enter'||event.key===' '){toggleChatWindow();event.preventDefault();}" class="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-700 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all z-50 cursor-pointer border border-indigo-500/30" aria-label="Open AI Assistant Chat">
         <span class="text-xl">💬</span>
         <span class="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950 animate-ping"></span>
         <span class="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
-    </div>
+    </button>
 
     <div id="ai-chat-window" class="fixed bottom-24 right-6 w-96 h-[460px] glass-panel rounded-2xl border border-indigo-900/40 shadow-2xl flex flex-col z-50 overflow-hidden hidden transition-all duration-300">
         <!-- Chat Header -->

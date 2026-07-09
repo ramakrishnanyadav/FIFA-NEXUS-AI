@@ -19,12 +19,12 @@ Regression tests covered:
 
 import pytest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.app.services.rules import validate_policy_rules
 from backend.app.services.optimizer import optimize_candidate_actions
-from backend.app.ai.agents import run_reasoning_agent, generate_heuristic_recommendation
+from backend.app.ai.agents import run_reasoning_agent
 from backend.app.schemas.schemas import TelemetryCreate
 from backend.app.services.telemetry import process_telemetry_input
 
@@ -158,7 +158,7 @@ async def test_telemetry_updates_current_occupancy():
             zone_id=zone_id,
             sensor_type="camera",
             count=750,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(UTC)
         )
         await process_telemetry_input(db_mock, redis_mock, telemetry)
 
@@ -215,7 +215,7 @@ async def test_llm_failover_to_heuristic():
         "ml_model_version": "lgbm:v1.2",
         "input_snapshot_hash": "xyz789",
         "relevant_procedures": ["SOP-100: Crowd dispersal"],
-        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z")
     }
 
     failing_client = AsyncMock()
@@ -356,7 +356,7 @@ async def test_duplicate_telemetry_idempotency():
 
     db_mock.execute.side_effect = execute_side_effect
 
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(UTC)
     telemetry = TelemetryCreate(zone_id=zone_id, sensor_type="camera", count=400, timestamp=ts)
 
     with patch("backend.app.core.database.USE_REDIS", False):
