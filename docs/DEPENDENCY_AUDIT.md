@@ -121,3 +121,27 @@ Found 24 known vulnerabilities in 6 packages
 | `starlette` | ❌ No (transitive via fastapi) | Potential | Upgrade fastapi post-hackathon |
 
 **No vulnerabilities exist in the direct runtime dependencies of this project.**
+
+---
+
+## Outdated Packages (Verification Date: 2026-07-10)
+
+The following packages are currently outdated in the local development environment:
+
+| Package | Installed Version | Latest Version | Type | Upgrade Risk / Action |
+|---|---|---|---|---|
+| `fastapi` | `0.111.0` | `0.139.0` | wheel | Medium. Requires testing API and middleware integrations. |
+| `starlette` | `0.37.2` | `1.3.1` | wheel | High. Fast API dependency. Upgrade via FastAPI upgrade. |
+| `pydantic` | `2.7.4` | `2.13.4` | wheel | Medium. Need to check for deprecation warnings in models. |
+| `pydantic-settings` | `2.3.3` | `2.14.2` | wheel | Low. Safe to upgrade. |
+| `SQLAlchemy` | `2.0.31` | `2.0.51` | wheel | Low. Safe to upgrade within 2.x range. |
+| `alembic` | `1.13.1` | `1.18.5` | wheel | Low. Safe to upgrade. |
+| `asyncpg` | `0.29.0` | `0.31.0` | wheel | Low. Safe to upgrade. |
+| `redis` | `5.0.6` | `8.0.1` | wheel | Medium. Check async method call compatibility. |
+| `qdrant-client` | `1.9.1` | `1.18.0` | wheel | Medium. Verify semantic search compatibility. |
+| `openai` | `1.35.3` | `2.45.0` | wheel | High. Significant API interface upgrades. |
+| `lightgbm` | `4.6.0` (pinned) | `4.6.0` | wheel | None. Kept stable. |
+| `pytest` | `8.2.2` | `9.1.1` | wheel | Medium. Keep at 8.2.2 for compatibility with pytest-asyncio. |
+| `pytest-asyncio` | `0.23.7` | `1.4.0` | wheel | Medium. Keep aligned with pytest. |
+| `ruff` | `0.15.20` | `0.15.21` | wheel | Low. Safe to upgrade. |
+

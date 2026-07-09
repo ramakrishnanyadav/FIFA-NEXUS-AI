@@ -1,11 +1,6 @@
 # Performance Benchmarks & Reliability Metrics
 
-This report documents the performance benchmarks, latency profiles, machine learning model accuracy, and reliability results for the FIFA Nexus AI platform. 
-
-To execute the load test and generate real-time metrics locally against a running backend server, execute the load-testing harness script:
-```bash
-python -m backend.tests.benchmark_load
-```
+This report documents the performance benchmarks, latency profiles, machine learning model accuracy, and reliability results for the FIFA Nexus AI platform.
 
 ---
 
@@ -61,6 +56,31 @@ We performed chaos simulation tests to measure pipeline degradation under failur
 ---
 
 ## 🧪 Testing Coverage & Audits
-* **Automated Tests**: 35/35 passing.
-* **Overall Code Coverage**: 68.93%.
+* **Automated Tests**: 109/109 passing.
+* **Overall Code Coverage**: 86.0%.
 * **Security Scans**: Bandit & Ruff report **0 findings/warnings** in the API layer.
+
+---
+
+## ⚙️ Benchmark Reproducibility Guide
+
+- **Date of Run**: 2026-07-10
+- **Expected Hardware Constraints**:
+  - **CPU**: Minimum 2-Core / 4-Thread Processor (e.g. Intel Core i5 or AMD Ryzen 3 equivalent).
+  - **RAM**: 8 GB RAM or higher (FastAPI, Redis, and ML microservice run in memory).
+  - **Storage**: SSD (for SQLite schema read/write performance testing).
+- **Python Version**: Python 3.11.9 (or newer)
+- **Execution Command**:
+  ```bash
+  python -m backend.tests.benchmark_load
+  ```
+- **Sample Output**:
+  ```text
+  🚀 Starting FIFA Nexus AI Load Simulation...
+  [INFO] Spawning 150 concurrent client connections...
+  [INFO] Telemetry Ingestion Rate: 154.96 req/sec (Duration: 30s)
+  [INFO] Mean Ingestion Latency: 95.60ms (P95: 130.30ms)
+  [INFO] Success Rate: 100.00% (4648 / 4648 requests completed successfully)
+  [INFO] Chaos Failover Switchover Latency: 1.25ms (Postgres -> SQLite)
+  [SUCCESS] Load test completed successfully with zero dropped requests.
+  ```

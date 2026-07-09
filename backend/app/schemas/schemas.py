@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 from typing import Any, Literal
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, field_serializer
 from uuid import UUID
 
 # Shared Config
@@ -96,6 +96,12 @@ class OperationalEventResponse(SchemaBase):
     correlation_id: UUID
     trace_id: str | None
 
+    @field_serializer("received_at")
+    def serialize_received_at(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.isoformat().replace("+00:00", "Z")
+
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -130,6 +136,12 @@ class RecommendationResponse(SchemaBase):
     reasoning_summary: str
     reasoning_time_ms: float | None = None
     generated_at: datetime
+
+    @field_serializer("generated_at")
+    def serialize_generated_at(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.isoformat().replace("+00:00", "Z")
 
     model_config = {
         "json_schema_extra": {
@@ -174,6 +186,18 @@ class TaskResponse(SchemaBase):
     status: Literal["PENDING", "DISPATCHED", "ACKNOWLEDGED", "STARTED", "COMPLETED", "CANCELLED"]
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.isoformat().replace("+00:00", "Z")
+
+    @field_serializer("updated_at")
+    def serialize_updated_at(self, dt: datetime) -> str:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.isoformat().replace("+00:00", "Z")
 
     model_config = {
         "json_schema_extra": {

@@ -9,63 +9,102 @@
 
 ### 400 Bad Request
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `400` | Idempotency key reused with different body | Retry with a new `Idempotency-Key` header, or omit the header |
+- **Trigger**: Idempotency key reused with different request body.
+- **Caller Recovery**: Retry with a new `Idempotency-Key` header value or omit the header.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Idempotency key 'uuid-key-here' already used with a different request payload."
+  }
+  ```
 
 ---
 
 ### 401 Unauthorized
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `401` | Missing or invalid `X-API-Key` header | Supply the correct API key in the `X-API-Key` header |
+- **Trigger**: Missing or invalid `X-API-Key` header.
+- **Caller Recovery**: Supply the correct API key in the `X-API-Key` header.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Could not validate credentials"
+  }
+  ```
 
 ---
 
 ### 403 Forbidden
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `403` | Attempting to apply a `POLICY_VIOLATION` recommendation | Do not apply recommendations with `validation_status != "VALIDATED"` |
+- **Trigger**: Attempting to apply a recommendation containing safety policy violations.
+- **Caller Recovery**: Inspect the validation status and do not apply recommendations with `validation_status != "APPROVED"`.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Recommendation cannot be applied due to POLICY_VIOLATION status."
+  }
+  ```
 
 ---
 
 ### 404 Not Found
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `404` | Route does not exist | Check the API reference; the path or method may be wrong |
-| `404` | Resource ID not found (recommendation, task, zone) | Verify the UUID exists; it may have been deleted or never created |
+- **Trigger**: Route does not exist or resource ID not found (recommendation, task, or zone).
+- **Caller Recovery**: Verify the UUID exists and that the HTTP path/method is correct.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Task with ID 11111111-1111-1111-1111-111111111111 not found"
+  }
+  ```
 
 ---
 
 ### 409 Conflict
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `409` | Task status transition is invalid (e.g., completing an already-completed task) | Fetch the current task state via `GET /tasks/{id}` before attempting a transition |
+- **Trigger**: Task status transition is invalid (e.g., completing an already-completed task).
+- **Caller Recovery**: Fetch the current task state via `GET /tasks/{id}` before attempting a transition.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Task is already in COMPLETED status"
+  }
+  ```
 
 ---
 
 ### 422 Unprocessable Entity
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `422` | Request body fails Pydantic schema validation | Inspect the `detail` array in the response; each item identifies the field and violation |
-
-Common validation failures:
-- `zone_id` not a valid UUID
-- `occupancy` below 0 or above `safe_capacity`
-- Missing required field
+- **Trigger**: Request body fails Pydantic schema validation.
+- **Caller Recovery**: Inspect the `detail` array in the response to identify the invalid field and violation constraints.
+- **Example Response**:
+  ```json
+  {
+    "detail": [
+      {
+        "type": "greater_than_equal",
+        "loc": ["body", "telemetry", "count"],
+        "msg": "Input should be greater than or equal to 0",
+        "input": -5,
+        "ctx": {
+          "geq": 0
+        }
+      }
+    ]
+  }
+  ```
 
 ---
 
 ### 429 Too Many Requests
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `429` | Write rate limit exceeded (default: 100 requests / 60 seconds per IP) | Wait until the next window before retrying; the `Retry-After` header indicates the reset time |
+- **Trigger**: Write rate limit exceeded (default: 100 requests / 60 seconds per IP).
+- **Caller Recovery**: Wait until the next window before retrying; the `Retry-After` header indicates the reset time.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Rate limit exceeded: 100 requests per 60 seconds."
+  }
+  ```
 
 > ℹ️ The `X-Correlation-ID` header is present even on 429 responses, so individual rate-limit events can be traced in logs.
 
@@ -73,11 +112,14 @@ Common validation failures:
 
 ### 500 Internal Server Error
 
-| Code | Trigger | Caller recovery |
-|---|---|---|
-| `500` | Unhandled exception in business logic | Retry once after a short delay; if persistent, file an issue with the `X-Correlation-ID` from the response |
-| `500` | Database commit failure | Automatic rollback has occurred; the request had no effect — safe to retry |
-| `500` | LLM provider chain exhausted all fallbacks | Extremely rare; heuristic fallback should always succeed. Retry once |
+- **Trigger**: Unhandled exception in business logic or database commit failure.
+- **Caller Recovery**: Retry once after a short delay; if persistent, contact stadium operations with the `X-Correlation-ID` from the response headers.
+- **Example Response**:
+  ```json
+  {
+    "detail": "Internal server error. Database transaction failed."
+  }
+  ```
 
 ---
 
@@ -85,7 +127,7 @@ Common validation failures:
 
 ### LLM Provider Failover
 
-When all external providers (OpenAI, Groq, Featherless) are unavailable, the system automatically falls back to the **local heuristic engine**. This is not surfaced as an error to the caller — the recommendation is still produced, but `model_version` in the response will indicate `"heuristic"`.
+When all external providers (OpenAI, Groq, Featherless) are unavailable, the system automatically falls back to the **local heuristic engine**. This is not surfaced as an error to the caller — the recommendation is still produced, but `model_version` in the response will indicate `"fallback:heuristic:v1"`.
 
 ### Redis Unavailability
 
@@ -109,7 +151,7 @@ All server-side errors are logged in structured JSON format with the correlation
 
 ```json
 {
-  "timestamp": "2026-07-09 12:00:00,000",
+  "timestamp": "2026-07-10 12:00:00,000",
   "level": "ERROR",
   "message": "Failed to fetch recommendations",
   "module": "recommendations",

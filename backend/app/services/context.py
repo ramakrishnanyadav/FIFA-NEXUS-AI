@@ -55,7 +55,8 @@ async def build_operational_context(
             .limit(5)
         )
         snapshots = snap_res.scalars().all()
-        historical_counts = [s.occupancy for s in reversed(snapshots)]
+        import typing
+        historical_counts = [typing.cast(int, s.occupancy) for s in reversed(snapshots)]
         if not historical_counts:
             # Fallback to zero
             historical_counts = [0]
@@ -63,17 +64,18 @@ async def build_operational_context(
     current_occupancy = historical_counts[-1]
 
     # 3. Fetch occupancy prediction trends from ML service
+    import typing
     prediction_data = await get_occupancy_prediction(
         zone_id=zone_id,
         historical_occupancy=historical_counts,
-        safe_capacity=zone.safe_capacity
+        safe_capacity=typing.cast(int, zone.safe_capacity)
     )
 
     # 4. Fetch Standard Operating Procedures (SOPs) from Qdrant Vector DB
     sop_query = f"High congestion procedures in {zone.name} with occupancy {current_occupancy}"
     relevant_procedures = await retrieve_relevant_procedures(
         category=category,
-        stadium_id=zone.stadium_id,
+        stadium_id=typing.cast(uuid.UUID, zone.stadium_id),
         query_text=sop_query
     )
 

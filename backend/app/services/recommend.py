@@ -32,7 +32,8 @@ async def generate_and_validate_recommendations(
     if event.event_type == "CROWD_DENSITY_HIGH":
         category = "CROWD"
 
-    context = await build_operational_context(db, redis_client, event.zone_id, category)
+    import typing
+    context = await build_operational_context(db, redis_client, typing.cast(uuid.UUID, event.zone_id), category)
 
     # 2. Run AI reasoning agent to generate candidate actions and measure time
     import time
