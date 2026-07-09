@@ -1151,6 +1151,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // 2.5 Language Selector Change
+    document.getElementById('lang-selector')?.addEventListener('change', () => {
+        if (typeof changeLanguage === 'function') changeLanguage();
+    });
+
     // 3. Simulation Control Center
     document.getElementById('btn-run-simulation')?.addEventListener('click', () => {
         if (typeof runSyntheticScenario === 'function') runSyntheticScenario();
