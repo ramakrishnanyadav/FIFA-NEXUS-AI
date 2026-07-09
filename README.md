@@ -7,7 +7,7 @@
   <a href="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml">
     <img src="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml/badge.svg" alt="Build Status" />
   </a>
-  <img src="https://img.shields.io/badge/Coverage-68.9%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
+  <img src="https://img.shields.io/badge/Coverage-71%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
   <img src="https://img.shields.io/badge/Security-Bandit_Passed-emerald?style=flat-square&logo=target&logoColor=white" alt="Security Status" />
   <img src="https://img.shields.io/badge/Code_Quality-Ruff_Passed-emerald?style=flat-square&logo=python&logoColor=white" alt="Code Quality" />
 </p>
@@ -37,67 +37,6 @@
 > **FIFA Nexus AI** proactively resolves crowd congestion and stadium bottlenecks at the FIFA World Cup 2026 by combining real-time sensor telemetry, LightGBM crowd forecasting, OpenAI GPT-4o-mini reasoning, and a deterministic policy safety gate — delivering human-supervised AI decisions in a closed-loop operations workflow.
 
 </div>
-
----
-
-## 🎬 Live Dashboard Demo
-
-> The animation below is a real recording captured from the running system — **no mocking, no stub data**. Every state change shown is driven by live API calls through the full telemetry → ML → AI → safety gate → dispatch pipeline.
-
-<div align="center">
-  <img src="docs/assets/demo_walkthrough.webp" alt="FIFA Nexus AI Live Dashboard Walkthrough" width="100%" />
-  <br/><sub><i>Real-time crowd intelligence: sensor telemetry → LightGBM forecast → GPT-4o-mini reasoning → policy gate → volunteer dispatch</i></sub>
-</div>
-
----
-
-## 📸 Dashboard Screenshots
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <strong>🟢 Nominal Operations — All Zones Green</strong><br/><br/>
-      <img src="docs/assets/dashboard_initial.png" alt="Dashboard initial state — all zones nominal" width="100%" />
-      <br/><sub>5 stadium zones monitored in real time via SSE. Auth chip visible top-right.</sub>
-    </td>
-    <td align="center" width="50%">
-      <strong>🔴 Congestion Breach — Gate A Critical</strong><br/><br/>
-      <img src="docs/assets/dashboard_breach.png" alt="Gate A congestion breach — SVG map turns red" width="100%" />
-      <br/><sub>Gate A breaches 85% safe capacity. SVG map pulses red. AI recommendation auto-generates.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <strong>🔐 API-Key Authentication Panel</strong><br/><br/>
-      <img src="docs/assets/dashboard_auth.png" alt="Authenticated dashboard view" width="100%" />
-      <br/><sub>Static API-key gate secures all write, recommendation, and chat endpoints.</sub>
-    </td>
-    <td align="center" width="50%">
-      <strong>🤖 AI Chat Assistant — Live Zone Query</strong><br/><br/>
-      <img src="docs/assets/chat_assistant.png" alt="AI Assistant answering Gate A status query" width="100%" />
-      <br/><sub>Assistant queries live DB, returns real occupancy figures. Intent classified as <code>zone_status</code>.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <strong>🧠 AI Recommendation Panel UI</strong><br/><br/>
-      <img src="docs/assets/ai_recommendation.png" alt="AI Recommendation Panel" width="100%" />
-      <br/><sub>Generative AI action proposal with safety checks, confidence metrics, and estimated wait-time reductions.</sub>
-    </td>
-    <td align="center" width="50%">
-      <strong>📋 Volunteer Task Management Board</strong><br/><br/>
-      <img src="docs/assets/volunteer_tasks.png" alt="Volunteer Task Board" width="100%" />
-      <br/><sub>Interactive ground dispatch queue tracking tasks from generated recommendation to completion.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <strong>📡 Real-time Event Stream Log</strong><br/><br/>
-      <img src="docs/assets/event_stream.png" alt="Real-time Event Stream Log" width="70%" />
-      <br/><sub>Live scrollable stream showing telemetry ticks, predictions, and validation logs in real time.</sub>
-    </td>
-  </tr>
-</table>
 
 ---
 
@@ -312,15 +251,64 @@ http://localhost:8000
 
 ---
 
-## 🧪 Running Tests
+## 🎬 Live Dashboard Demo
 
-```bash
-# Run full test suite
-pytest backend/tests/
+> The animation below is a real recording captured from the running system — **no mocking, no stub data**. Every state change shown is driven by live API calls through the full telemetry → ML → AI → safety gate → dispatch pipeline.
 
-# Run evaluation benchmarks (prints ML accuracy and safety recall)
-pytest -s backend/tests/test_evaluation.py
-```
+<div align="center">
+  <img src="docs/assets/demo_walkthrough.webp" alt="FIFA Nexus AI Live Dashboard Walkthrough" width="100%" />
+  <br/><sub><i>Real-time crowd intelligence: sensor telemetry → LightGBM forecast → GPT-4o-mini reasoning → policy gate → volunteer dispatch</i></sub>
+</div>
+
+---
+
+## 📸 Dashboard Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🟢 Nominal Operations — All Zones Green</strong><br/><br/>
+      <img src="docs/assets/dashboard_initial.png" alt="Dashboard initial state — all zones nominal" width="100%" />
+      <br/><sub>5 stadium zones monitored in real time via SSE. Auth chip visible top-right.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>🔴 Congestion Breach — Gate A Critical</strong><br/><br/>
+      <img src="docs/assets/dashboard_breach.png" alt="Gate A congestion breach — SVG map turns red" width="100%" />
+      <br/><sub>Gate A breaches 85% safe capacity. SVG map pulses red. AI recommendation auto-generates.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🔐 API-Key Authentication Panel</strong><br/><br/>
+      <img src="docs/assets/dashboard_auth.png" alt="Authenticated dashboard view" width="100%" />
+      <br/><sub>Static API-key gate secures all write, recommendation, and chat endpoints.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>🤖 AI Chat Assistant — Live Zone Query</strong><br/><br/>
+      <img src="docs/assets/chat_assistant.png" alt="AI Assistant answering Gate A status query" width="100%" />
+      <br/><sub>Assistant queries live DB, returns real occupancy figures. Intent classified as <code>zone_status</code>.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>🧠 AI Recommendation Panel UI</strong><br/><br/>
+      <img src="docs/assets/ai_recommendation.png" alt="AI Recommendation Panel" width="100%" />
+      <br/><sub>Generative AI action proposal with safety checks, confidence metrics, and estimated wait-time reductions.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>📋 Volunteer Task Management Board</strong><br/><br/>
+      <img src="docs/assets/volunteer_tasks.png" alt="Volunteer Task Board" width="100%" />
+      <br/><sub>Interactive ground dispatch queue tracking tasks from generated recommendation to completion.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <strong>📡 Real-time Event Stream Log</strong><br/><br/>
+      <img src="docs/assets/event_stream.png" alt="Real-time Event Stream Log" width="70%" />
+      <br/><sub>Live scrollable stream showing telemetry ticks, predictions, and validation logs in real time.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -342,6 +330,30 @@ The dashboard tells a complete operations story in under 6 minutes:
 | **8. Complete Task** | Click ✅ on a task card | Task transitions to `COMPLETED`; feedback logged to database |
 | **9. Fan Query** | Open chat → ask: *"Gate A status"* | Assistant queries live DB; returns real occupancy figures with intent `zone_status` |
 | **10. Alt Query** | Ask: *"Where is the fastest entrance?"* | Assistant ranks all zones by live occupancy; returns lowest-congestion gate |
+
+---
+
+## 🧪 Running Tests
+
+```bash
+# Run full test suite
+pytest backend/tests/
+
+# Run evaluation benchmarks (prints ML accuracy and safety recall)
+pytest -s backend/tests/test_evaluation.py
+```
+
+---
+
+## 🛡️ Security Hardening
+
+FIFA Nexus AI implements strict security safeguards suitable for production operations:
+
+1. **Static API Key Gate**: Guarding all write, recommendation, and AI assistant chat routes with a secure, configurable API Key validation check.
+2. **Rate Limiting Middleware**: Custom sliding-window rate limiters preventing DDoS and brute-force abuse (30 writes/min, 100 reads/min).
+3. **Outermost Correlation Tracking**: Traceability enabled on all requests via `X-Correlation-ID` header injection.
+4. **SQL Injection Shield**: Safe parameter binding using SQLAlchemy ORM.
+5. **Static Security Scans**: Continuous automated audits passing Bandit security scanner checks with zero vulnerability warnings.
 
 ---
 

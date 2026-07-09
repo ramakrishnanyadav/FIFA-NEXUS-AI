@@ -27,7 +27,7 @@ async def list_zones(db: Annotated[AsyncSession, Depends(get_db)]):
         result = await db.execute(select(Zone).where(Zone.deleted_at.is_(None)))
         zones = result.scalars().all()
         return zones
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Failed to load zones: {e}", exc_info=True)
+        logger.exception("Failed to load zones")
         raise HTTPException(status_code=500, detail="Failed to load zones. Please try again.")

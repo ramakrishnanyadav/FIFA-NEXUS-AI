@@ -183,5 +183,5 @@ async def process_telemetry_input(
         }
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error during telemetry processing, rolled back transaction: {e}", exc_info=True)
+        logger.exception("Error during telemetry processing, rolled back transaction")
         raise e

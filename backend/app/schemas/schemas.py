@@ -49,6 +49,17 @@ class TelemetryCreate(BaseModel):
     count: int = Field(..., ge=0, description="Measured count of entities (occupancy, wait count)")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "zone_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "sensor_type": "camera",
+                "count": 850,
+                "timestamp": "2026-07-09T15:00:00Z"
+            }
+        }
+    }
+
 # Event Schemas
 class OperationalEventCreate(BaseModel):
     zone_id: UUID | None = None
@@ -57,6 +68,22 @@ class OperationalEventCreate(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict, description="Typed event payload parameters")
     correlation_id: UUID | None = None
     trace_id: str | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "zone_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "source": "sensor:camera:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "event_type": "CROWD_DENSITY_HIGH",
+                "payload": {
+                    "current_occupancy": 850,
+                    "safe_capacity": 1000,
+                    "occupancy_ratio": 0.85
+                },
+                "correlation_id": "e3e8f810-705a-4bbf-a01a-84fb5f448b11"
+            }
+        }
+    }
 
 class OperationalEventResponse(SchemaBase):
     id: UUID
@@ -67,6 +94,24 @@ class OperationalEventResponse(SchemaBase):
     received_at: datetime
     correlation_id: UUID
     trace_id: str | None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "c7fde61b-9f1e-4509-88c9-9430e79cde66",
+                "zone_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "source": "sensor:camera:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "event_type": "CROWD_DENSITY_HIGH",
+                "payload": {
+                    "current_occupancy": 850,
+                    "safe_capacity": 1000,
+                    "occupancy_ratio": 0.85
+                },
+                "received_at": "2026-07-09T15:00:05Z",
+                "correlation_id": "e3e8f810-705a-4bbf-a01a-84fb5f448b11"
+            }
+        }
+    }
 
 # Recommendation Schemas
 class RecommendationResponse(SchemaBase):
@@ -85,6 +130,33 @@ class RecommendationResponse(SchemaBase):
     reasoning_time_ms: float | None = None
     generated_at: datetime
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "a4b1dec3-a6d1-4bad-92bc-7bfcd83d91cf",
+                "trigger_event_id": "c7fde61b-9f1e-4509-88c9-9430e79cde66",
+                "target_role": "VOLUNTEER",
+                "candidate_actions": [
+                    "Open additional turnstiles at Gate B to relieve pressure on Gate A.",
+                    "Deploy mobile signs redirecting arriving fans from Gate A to Gate B."
+                ],
+                "expected_impact": {
+                    "wait_time_reduction_min": 12,
+                    "co2_saved_kg": 4.5
+                },
+                "validation_status": "VALIDATED",
+                "policy_flags": [],
+                "prompt_version": "sop_incident_reasoning:v2",
+                "model_version": "gpt-4o-mini:2024-07-18",
+                "knowledge_version": "sop_handbook_miami_2026_v1",
+                "confidence": 0.95,
+                "reasoning_summary": "Crowd density at Gate A is at critical levels. Directing volunteers to deploy signs and open Gate B will distribute the load effectively.",
+                "reasoning_time_ms": 145.2,
+                "generated_at": "2026-07-09T15:00:07Z"
+            }
+        }
+    }
+
 class RecommendationFeedback(BaseModel):
     accepted: bool
     applied: bool
@@ -102,6 +174,20 @@ class TaskResponse(SchemaBase):
     created_at: datetime
     updated_at: datetime
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "e4fde72c-81b3-4f2c-98d9-e93c8b9d88cc",
+                "recommendation_id": "a4b1dec3-a6d1-4bad-92bc-7bfcd83d91cf",
+                "assigned_user_id": None,
+                "assigned_role": "VOLUNTEER",
+                "details": "Deploy mobile signs redirecting arriving fans from Gate A to Gate B.",
+                "status": "DISPATCHED",
+                "created_at": "2026-07-09T15:00:08Z",
+                "updated_at": "2026-07-09T15:00:08Z"
+            }
+        }
+    }
+
 class TaskUpdate(BaseModel):
     status: Literal["PENDING", "DISPATCHED", "ACKNOWLEDGED", "STARTED", "COMPLETED", "CANCELLED"] = Field(..., description="New task status")
-

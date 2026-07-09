@@ -101,9 +101,9 @@ async def list_tasks(
         result = await db.execute(query)
         tasks = result.scalars().all()
         return tasks
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Failed to fetch tasks: {e}", exc_info=True)
+        logger.exception("Failed to fetch tasks")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch tasks. Please try again."
@@ -154,10 +154,10 @@ async def update_task_status(
         return task
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
         from backend.app.core.logging import logger
-        logger.error(f"Failed to update task {task_id}: {e}", exc_info=True)
+        logger.exception(f"Failed to update task {task_id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update task. Please try again."

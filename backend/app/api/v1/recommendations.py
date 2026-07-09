@@ -29,9 +29,9 @@ async def list_recommendations(
         result = await db.execute(query)
         recommendations = result.scalars().all()
         return recommendations
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Failed to fetch recommendations: {e}", exc_info=True)
+        logger.exception("Failed to fetch recommendations")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch recommendations. Please try again."
@@ -85,9 +85,9 @@ async def get_recommendation_stats(
             "total_co2_saved_kg": round(total_co2, 2),
             "provider_stats": provider_stats
         }
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Failed to fetch recommendation statistics: {e}", exc_info=True)
+        logger.exception("Failed to fetch recommendation statistics")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to compile recommendation metrics."
@@ -209,10 +209,10 @@ async def apply_recommendation(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
         from backend.app.core.logging import logger
-        logger.error(f"Failed to apply recommendation {recommendation_id}: {e}", exc_info=True)
+        logger.exception(f"Failed to apply recommendation {recommendation_id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to apply recommendation. Please try again."
@@ -250,10 +250,10 @@ async def submit_feedback(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
         from backend.app.core.logging import logger
-        logger.error(f"Failed to record feedback for recommendation {recommendation_id}: {e}", exc_info=True)
+        logger.exception(f"Failed to record feedback for recommendation {recommendation_id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to record feedback. Please try again."

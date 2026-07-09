@@ -118,10 +118,10 @@ async def create_manual_event(
             local_pubsub_bus.publish(alert_msg)
 
         return event
-    except Exception as e:
+    except Exception:
         await db.rollback()
         from backend.app.core.logging import logger
-        logger.error(f"Failed to record operational event: {e}", exc_info=True)
+        logger.exception("Failed to record operational event")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to record operational event. Please try again."
@@ -143,9 +143,9 @@ async def list_operational_events(
         result = await db.execute(query)
         events = result.scalars().all()
         return events
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Failed to fetch events: {e}", exc_info=True)
+        logger.exception("Failed to fetch events")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch events. Please try again."

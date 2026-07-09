@@ -25,9 +25,9 @@ async def ingest_telemetry(
         return result
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         from backend.app.core.logging import logger
-        logger.error(f"Telemetry ingestion error: {e}", exc_info=True)
+        logger.exception("Telemetry ingestion error")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during telemetry ingestion. Please contact operations support."

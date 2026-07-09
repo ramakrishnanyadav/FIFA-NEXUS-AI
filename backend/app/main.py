@@ -124,5 +124,20 @@ async def health_check():
         "api_key_configured": bool(settings.API_KEY)
     }
 
+@app.get("/version")
+async def version_endpoint():
+    import subprocess
+    git_commit = "unknown"
+    try:
+        git_commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+    except Exception:
+        git_commit = os.getenv("RENDER_GIT_COMMIT", "ecfabca")
+
+    return {
+        "version": "1.0.0",
+        "build": "prod-build",
+        "git_commit": git_commit
+    }
+
 
 
