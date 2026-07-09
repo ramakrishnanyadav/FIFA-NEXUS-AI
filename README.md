@@ -40,6 +40,18 @@
 
 ---
 
+## 🌟 Key Highlights
+
+* **AI Provider Failover Chain**: Resilient multi-LLM routing (`OpenAI` → `Groq` → `Featherless` → `Local Heuristics`) ensures reasoning support survives quota exhaustion or network downtime.
+* **Deterministic Policy Safety Gate**: Zero LLM recommendations can be dispatched to ground staff without passing explicit business rule checks.
+* **40 Automated Tests**: Robust test coverage targeting concurrency isolation, regression limits, and RAG retrieval.
+* **Structured JSON Logging & Traceability**: Request tracing using `X-Correlation-ID` header and async-safe ContextVars.
+* **Real-time SSE Event Stream**: Real-time server-sent events push telemetry alerts, predictions, and task updates instantly to the dashboard.
+* **Dockerized Infrastructure**: Simple compose stack with PostgreSQL/PostGIS, Redis, and Qdrant.
+* **Rigorous Linting & Security Checking**: Configured quality gates running Ruff and Bandit, certified for zero security warnings.
+
+---
+
 ## 🧭 Documentation Hub
 
 | Document | Description |
