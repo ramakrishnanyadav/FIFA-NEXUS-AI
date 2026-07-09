@@ -74,7 +74,10 @@ app.add_middleware(
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Set CORS origins with strict domain access control
+# Correlation ID Middleware
+app.add_middleware(CorrelationIdMiddleware)
+
+# Set CORS origins with strict domain access control — added last to run outermost in middleware execution order
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -88,9 +91,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Correlation ID Middleware (outermost middleware added last)
-app.add_middleware(CorrelationIdMiddleware)
 
 # Include API Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
