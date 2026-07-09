@@ -103,5 +103,5 @@ def predict_occupancy(req: PredictionRequest):
 if __name__ == "__main__":
     import uvicorn
     import os
-    host_ip = os.getenv("ML_HOST", "0.0.0.0")
+    host_ip = os.getenv("ML_HOST", "127.0.0.1")
     uvicorn.run(app, host=host_ip, port=8001)

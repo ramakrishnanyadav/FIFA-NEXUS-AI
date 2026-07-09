@@ -9,7 +9,7 @@ echo "🚀 FIFA Nexus AI — Starting services..."
 
 # Launch ML inference service (port 8001) in background
 echo "  [1/2] Starting ML Inference Service on port 8001..."
-python -m ml.src.inference &
+ML_HOST=127.0.0.1 python -m ml.src.inference &
 ML_PID=$!
 echo "  [1/2] ML Inference started (PID: $ML_PID)"
 
