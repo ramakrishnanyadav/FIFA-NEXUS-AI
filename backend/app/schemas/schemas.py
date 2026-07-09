@@ -21,7 +21,8 @@ class UserCreate(UserBase):
 
     @field_validator("password")
     @classmethod
-    def validate_password_complexity(_cls, v: str) -> str:
+    def validate_password_complexity(cls, v: str) -> str:
+        _ = cls  # Reference cls to satisfy Vulture unused-variable check
         if not any(c.isupper() for c in v):
             raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.isdigit() for c in v):
