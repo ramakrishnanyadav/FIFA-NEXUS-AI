@@ -453,3 +453,222 @@ async def test_update_task_status_success_local_pubsub():
             )
     mock_bus.publish.assert_called_once()
     assert returned == task_mock
+
+
+# ---------------------------------------------------------------------------
+# 24. assistant - _handle_llm_query success path
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_handle_llm_query_success(monkeypatch):
+    from backend.app.api.v1.assistant import _handle_llm_query
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test")
+    mock_response = AsyncMock()
+    mock_response.choices = [AsyncMock(message=AsyncMock(content="Zone Gate A is nominal."))]
+
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.return_value = mock_response
+
+    with patch("backend.app.ai.agents._get_llm_clients", return_value=[(mock_client, "gpt-4o-mini", "openai")]):
+        result = await _handle_llm_query("What's the weather doing to crowd flow?")
+
+    assert result.intent == "llm_response"
+    assert "Gate A" in result.response
+
+
+# ---------------------------------------------------------------------------
+# 25. assistant - _handle_llm_query failover fallback path
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_handle_llm_query_all_providers_fail_falls_back(monkeypatch):
+    from backend.app.api.v1.assistant import _handle_llm_query
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test")
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.side_effect = Exception("timeout")
+
+    with patch("backend.app.ai.agents._get_llm_clients", return_value=[(mock_client, "gpt-4o-mini", "openai")]):
+        result = await _handle_llm_query("anything")
+
+    assert result.intent == "general"
+
+
+# ---------------------------------------------------------------------------
+# 26. assistant - _handle_llm_query when LLM is not configured
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_handle_llm_query_no_llm_configured(monkeypatch):
+    from backend.app.api.v1.assistant import _handle_llm_query
+    from backend.app.core import config
+
+    # Ensure no API keys are active
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(config.settings, "GROQ_API_KEY", "")
+    monkeypatch.setattr(config.settings, "FEATHERLESS_API_KEY", "")
+
+    result = await _handle_llm_query("hello")
+    assert result.intent == "general"
+    assert "Nexus AI" in result.response
+
+
+# ---------------------------------------------------------------------------
+# 27. assistant - chat_assistant gate a status (nominal/low capacity)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_gate_a_nominal():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    zone_mock = MagicMock()
+    zone_mock.name = "Gate A"
+    zone_mock.current_occupancy = 300
+    zone_mock.safe_capacity = 1000
+
+    result_mock = MagicMock()
+    result_mock.scalar_one_or_none.return_value = zone_mock
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="Gate A status query")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "zone_status"
+    assert "nominal" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 28. assistant - chat_assistant gate a status (not found in DB)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_gate_a_not_found():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    result_mock = MagicMock()
+    result_mock.scalar_one_or_none.return_value = None
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="How is Gate A?")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "zone_status"
+    assert "operating within nominal limits" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 29. assistant - chat_assistant navigation / entrance intent (zones exist)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_navigation_zones_exist():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    zone_mock = MagicMock()
+    zone_mock.name = "Gate B"
+    zone_mock.current_occupancy = 100
+    zone_mock.safe_capacity = 1000
+
+    result_mock = MagicMock()
+    result_mock.scalars.return_value.all.return_value = [zone_mock]
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="What is the fastest entrance?")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "fan_navigation"
+    assert "Gate B" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 30. assistant - chat_assistant navigation / entrance intent (no zones)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_navigation_no_zones():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    result_mock = MagicMock()
+    result_mock.scalars.return_value.all.return_value = []
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="Which route is best?")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "fan_navigation"
+    assert "recommended" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 31. assistant - chat_assistant volunteer / task intent (active tasks exist)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_task_active_tasks():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    task_mock = MagicMock()
+    task_mock.details = "Clear gate block"
+    task_mock.assigned_role = "security"
+
+    result_mock = MagicMock()
+    result_mock.scalars.return_value.all.return_value = [task_mock]
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="Any active volunteer dispatches?")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "task_status"
+    assert "Clear gate block" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 32. assistant - chat_assistant volunteer / task intent (no active tasks)
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_task_no_active_tasks():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    result_mock = MagicMock()
+    result_mock.scalars.return_value.all.return_value = []
+    db.execute.return_value = result_mock
+
+    req = ChatRequest(message="volunteer status")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "task_status"
+    assert "completed" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 33. assistant - chat_assistant fallback / offline info
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_system_fallback_info():
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+
+    db = AsyncMock()
+    req = ChatRequest(message="tell me about offline fallback mode")
+    resp = await chat_assistant(req, db, "mock_api_key")
+    assert resp.intent == "system_info"
+    assert "SQLite" in resp.response
+
+
+# ---------------------------------------------------------------------------
+# 34. assistant - chat_assistant routing query via LLM client post
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_chat_assistant_llm_post_route(monkeypatch):
+    from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test")
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock(message=MagicMock(content="Mocked LLM reply."))]
+
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.return_value = mock_response
+
+    db = AsyncMock()
+    req = ChatRequest(message="What is the forecast weather?")
+
+    with patch("backend.app.ai.agents._get_llm_clients", return_value=[(mock_client, "gpt-4o-mini", "openai")]):
+        resp = await chat_assistant(req, db, "mock_api_key")
+
+    assert resp.intent == "llm_response"
+    assert "Mocked LLM" in resp.response
