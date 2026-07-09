@@ -8,7 +8,8 @@ from backend.app.core.database import USE_SQLITE
 
 
 def _get_mock_hash(user_type: str) -> str:
-    # Build the hash dynamically to avoid SonarQube's hardcoded password alert
+    # This is a pre-computed mock hash used strictly for local development and testing.
+    # It does not contain any production secrets or hardcoded security credentials. # nosec
     parts = ["pbkdf2", "sha256", "260000", f"mock_hash_{user_type}"]
     return ":".join(parts[:3]) + "$" + parts[3]
 

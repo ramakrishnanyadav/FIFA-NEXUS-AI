@@ -20,7 +20,7 @@ async def test_correlation_id_concurrency_isolation():
     Simulates 50 concurrent requests and verifies that ContextVar
     isolation works correctly under high concurrency (each has a unique ID).
     """
-    async with httpx.AsyncClient(app=app, base_url="https://testserver") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as client:
         tasks = [client.get("/health") for _ in range(50)]
         responses = await asyncio.gather(*tasks)
         
@@ -60,7 +60,7 @@ async def test_telemetry_propagation_matches_header():
     
     app.dependency_overrides[get_db] = lambda: db_mock
     try:
-        async with httpx.AsyncClient(app=app, base_url="https://testserver") as client:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as client:
             correlation_id = str(uuid.uuid4())
             headers = {
                 "X-API-Key": settings.API_KEY,

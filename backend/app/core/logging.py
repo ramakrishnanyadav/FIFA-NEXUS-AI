@@ -19,7 +19,7 @@ STANDARD_FIELDS = {
     'name', 'msg', 'args', 'levelname', 'levelno', 'pathname', 'filename',
     'module', 'exc_info', 'exc_text', 'stack_info', 'lineno', 'funcName',
     'created', 'msecs', 'relativeCreated', 'thread', 'threadName',
-    'processName', 'process', 'message'
+    'processName', 'process', 'message', 'taskName'
 }
 
 # Structured JSON Formatter for production-grade logging
