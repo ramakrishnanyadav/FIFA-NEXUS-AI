@@ -153,9 +153,6 @@ class OperationalEvent(Base):
 
 class Recommendation(Base):
     __tablename__ = "recommendations"
-    __table_args__ = (
-        Index("idx_recommendation_status_generated", "validation_status", "generated_at"),
-    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     trigger_event_id = Column(UUID(as_uuid=True), ForeignKey("operational_events.id", ondelete="RESTRICT"), nullable=False)

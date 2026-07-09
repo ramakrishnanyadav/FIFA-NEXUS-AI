@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func, case
 import redis.asyncio as aioredis
 import json
 from backend.app.core.database import get_db, get_redis_client, USE_REDIS
@@ -42,11 +43,21 @@ async def get_recommendation_stats(
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     try:
-        query = select(Recommendation)
-        result = await db.execute(query)
-        recs = result.scalars().all()
-        
-        total_count = len(recs)
+        # Aggregate directly in SQL — avoids full table scan into Python memory
+        agg_query = select(
+            func.count(Recommendation.id).label("total_count"),
+            func.avg(Recommendation.reasoning_time_ms).label("avg_reasoning_time_ms"),
+            func.sum(
+                case((Recommendation.validation_status == "VALIDATED", 1), else_=0)
+            ).label("validated_count"),
+            func.sum(
+                case((Recommendation.validation_status != "VALIDATED", 1), else_=0)
+            ).label("violation_count"),
+        )
+        agg_result = await db.execute(agg_query)
+        row = agg_result.one()
+
+        total_count = row.total_count or 0
         if total_count == 0:
             return {
                 "total_count": 0,
@@ -56,32 +67,29 @@ async def get_recommendation_stats(
                 "total_co2_saved_kg": 0.0,
                 "provider_stats": {}
             }
-            
-        sum_time = 0.0
-        validated_count = 0
-        violation_count = 0
+
+        # Fetch only fields needed for non-aggregatable columns (co2, provider)
+        detail_result = await db.execute(
+            select(
+                Recommendation.expected_impact,
+                Recommendation.model_version,
+            )
+        )
+        detail_rows = detail_result.all()
+
         total_co2 = 0.0
-        provider_stats = {}
-        
-        for r in recs:
-            sum_time += r.reasoning_time_ms or 0.0
-            if r.validation_status == "VALIDATED":
-                validated_count += 1
-            else:
-                violation_count += 1
-                
-            # Parse co2_saved_kg
-            if r.expected_impact and isinstance(r.expected_impact, dict):
-                total_co2 += float(r.expected_impact.get("co2_saved_kg", 0.0))
-                
-            model = r.model_version or "Unknown Provider"
-            provider_stats[model] = provider_stats.get(model, 0) + 1
-            
+        provider_stats: dict[str, int] = {}
+        for impact, model in detail_rows:
+            if impact and isinstance(impact, dict):
+                total_co2 += float(impact.get("co2_saved_kg", 0.0))
+            key = model or "Unknown Provider"
+            provider_stats[key] = provider_stats.get(key, 0) + 1
+
         return {
             "total_count": total_count,
-            "avg_reasoning_time_ms": round(sum_time / total_count, 1),
-            "validated_count": validated_count,
-            "violation_count": violation_count,
+            "avg_reasoning_time_ms": round(float(row.avg_reasoning_time_ms or 0.0), 1),
+            "validated_count": int(row.validated_count or 0),
+            "violation_count": int(row.violation_count or 0),
             "total_co2_saved_kg": round(total_co2, 2),
             "provider_stats": provider_stats
         }

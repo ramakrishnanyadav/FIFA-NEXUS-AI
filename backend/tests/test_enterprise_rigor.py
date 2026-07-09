@@ -49,17 +49,23 @@ def test_schema_contracts():
     finally:
         app.dependency_overrides.pop(get_db, None)
 
-    # 2. Recommendations Stats contract check
-    rec_mock = MagicMock()
-    rec_mock.reasoning_time_ms = 150.0
-    rec_mock.validation_status = "VALIDATED"
-    rec_mock.expected_impact = {"co2_saved_kg": 5.2}
-    rec_mock.model_version = "openai/gpt-4o"
+    # 2. Recommendations Stats contract check — two-query pattern:
+    #    call 1: aggregation query → .one() returns aggregate row
+    #    call 2: detail query       → .all() returns column tuples
+    agg_row = MagicMock()
+    agg_row.total_count = 1
+    agg_row.avg_reasoning_time_ms = 150.0
+    agg_row.validated_count = 1
+    agg_row.violation_count = 0
 
-    db_execute_mock_rec = MagicMock()
-    db_execute_mock_rec.scalars().all.return_value = [rec_mock]
+    agg_result_mock = MagicMock()
+    agg_result_mock.one.return_value = agg_row
+
+    detail_result_mock = MagicMock()
+    detail_result_mock.all.return_value = [({"co2_saved_kg": 5.2}, "openai/gpt-4o")]
+
     db_mock_rec = AsyncMock()
-    db_mock_rec.execute.return_value = db_execute_mock_rec
+    db_mock_rec.execute.side_effect = [agg_result_mock, detail_result_mock]
 
     app.dependency_overrides[get_db] = lambda: db_mock_rec
     try:
