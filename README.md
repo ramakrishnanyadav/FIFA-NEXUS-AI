@@ -7,7 +7,7 @@
   <a href="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml">
     <img src="https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/actions/workflows/tests.yml/badge.svg" alt="Build Status" />
   </a>
-  <img src="https://img.shields.io/badge/Coverage-71%25-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
+  <img src="https://img.shields.io/badge/Coverage-68%25_(branch)-emerald?style=flat-square&logo=codecov&logoColor=white" alt="Coverage" />
   <img src="https://img.shields.io/badge/Security-Bandit_Passed-emerald?style=flat-square&logo=target&logoColor=white" alt="Security Status" />
   <img src="https://img.shields.io/badge/Code_Quality-Ruff_Passed-emerald?style=flat-square&logo=python&logoColor=white" alt="Code Quality" />
 </p>

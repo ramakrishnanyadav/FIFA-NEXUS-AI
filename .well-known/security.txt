@@ -1,0 +1,5 @@
+Contact: https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/security/advisories/new
+Expires: 2027-07-09T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/blob/main/.well-known/security.txt
+Policy: https://github.com/ramakrishnanyadav/FIFA-NEXUS-AI/blob/main/docs/SECURITY_REVIEW.md
