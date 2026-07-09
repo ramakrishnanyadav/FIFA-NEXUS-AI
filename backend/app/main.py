@@ -1,8 +1,9 @@
 import os
 from datetime import datetime, UTC
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +14,11 @@ from backend.app.core.database import engine, Base, async_session_maker, USE_SQL
 from backend.app.core.seed import seed_initial_data
 from backend.app.core.logging import logger, CorrelationIdMiddleware
 from backend.app.core.rate_limit import RateLimitMiddleware, SecurityHeadersMiddleware
+from backend.app.core.auth import verify_api_key
 from backend.app.api import api_router
+
+# Global version cache initialized at startup in lifespan
+GIT_COMMIT = "unknown"
 
 # Track startup time for uptime calculations
 START_TIME = datetime.now(UTC)
@@ -26,6 +31,26 @@ async def lifespan(app: FastAPI):
     seeds data in development, and handles clean resources teardown on exit.
     """
     logger.info("--- [SYSTEM STARTUP DIAGNOSTICS] ---")
+    
+    # Cache git commit version once at startup asynchronously
+    global GIT_COMMIT
+    try:
+        import asyncio
+        process = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "--short", "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        if process.returncode == 0:
+            GIT_COMMIT = stdout.decode("utf-8").strip()
+        else:
+            GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
+    except Exception:
+        GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
+    
+    logger.info(f"Git commit version cached: {GIT_COMMIT}")
+
     db_mode = "SQLite (Local Fallback Mode Enabled)" if USE_SQLITE else "PostgreSQL (Production)"
     logger.info(f"Database mode: {db_mode}")
 
@@ -99,25 +124,6 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# Cache git commit version on startup to prevent spawning subprocesses on every /version request
-GIT_COMMIT = "unknown"
-try:
-    import subprocess
-    result = subprocess.run(
-        ["git", "rev-parse", "--short", "HEAD"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False
-    )
-    if result.returncode == 0:
-        GIT_COMMIT = result.stdout.strip()
-    else:
-        GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
-except Exception:
-    GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
-
-
 @app.get("/")
 async def serve_dashboard():
     return FileResponse(os.path.join(static_dir, "index.html"))
@@ -134,10 +140,6 @@ async def health_check():
         "api_key_configured": bool(settings.API_KEY)
     }
 
-
-from fastapi import Depends
-from typing import Annotated
-from backend.app.core.auth import verify_api_key
 
 @app.get("/health/details")
 async def health_details(

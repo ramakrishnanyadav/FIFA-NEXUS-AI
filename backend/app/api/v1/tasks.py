@@ -13,6 +13,7 @@ import redis.asyncio as aioredis
 import json
 from datetime import datetime, UTC
 from backend.app.core.database import get_db, get_redis_client, USE_REDIS
+from backend.app.core.auth import verify_api_key
 from backend.app.models.models import Task
 from backend.app.schemas.schemas import TaskResponse, TaskUpdate
 
@@ -122,8 +123,6 @@ async def list_tasks(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch tasks. Please try again."
         )
-
-from backend.app.core.auth import verify_api_key
 
 @router.patch("/{task_id}", response_model=TaskResponse, responses={404: {"description": "Task not found"}, 500: {"description": "Internal server error"}})
 async def update_task_status(

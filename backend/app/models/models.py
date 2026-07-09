@@ -1,7 +1,4 @@
 from datetime import datetime, UTC
-
-def _now_utc():
-    return datetime.now(UTC)
 from sqlalchemy import (
     Column,
     String,
@@ -19,6 +16,10 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from backend.app.core.database import Base, USE_SQLITE
+
+
+def _now_utc():
+    return datetime.now(UTC)
 
 if USE_SQLITE:
     from sqlalchemy import JSON as SqliteJSON

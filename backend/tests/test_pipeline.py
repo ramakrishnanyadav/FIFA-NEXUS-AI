@@ -3,10 +3,14 @@ import pytest
 import uuid
 from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from backend.app.schemas.schemas import TelemetryCreate
 from backend.app.services.telemetry import process_telemetry_input
 from backend.app.services.optimizer import optimize_candidate_actions
 from backend.app.services.rules import validate_policy_rules
+from backend.app.api.v1.assistant import chat_assistant, ChatRequest
+from backend.app.services.recommend import generate_and_validate_recommendations
+from backend.app.models.models import Recommendation, OperationalEvent, Zone
 
 @pytest.mark.asyncio
 async def test_telemetry_threshold_breach():
@@ -99,8 +103,6 @@ def test_policy_rules_engine():
     assert "RULE_SEC_01_VIOLATION" in flags
 
 
-from backend.app.api.v1.assistant import chat_assistant, ChatRequest
-
 @pytest.mark.asyncio
 async def test_chat_assistant():
     # Mock DB Session
@@ -128,9 +130,6 @@ async def test_chat_assistant():
     assert resp.intent == "sustainability_info"
     assert "CO2" in resp.response
 
-
-from backend.app.services.recommend import generate_and_validate_recommendations
-from backend.app.models.models import Recommendation, OperationalEvent, Zone
 
 @pytest.mark.asyncio
 async def test_generate_and_validate_recommendations_flow():

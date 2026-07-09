@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -73,8 +74,6 @@ def get_qdrant_client() -> QdrantClient:
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT
     )
-
-import asyncio
 
 class LocalPubSubBus:
     def __init__(self):

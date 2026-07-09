@@ -2,6 +2,8 @@
 Zones API Router.
 Provides metadata and live operational status for stadium sectors, gates, and concourses.
 """
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -25,8 +27,6 @@ class ZoneResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
-
-from typing import Annotated
 
 @router.get("", response_model=list[ZoneResponseSchema], responses={500: {"description": "Failed to load zones"}})
 async def list_zones(db: Annotated[AsyncSession, Depends(get_db)]):

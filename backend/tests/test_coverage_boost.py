@@ -2,9 +2,12 @@ import pytest
 import uuid
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from backend.app.api.v1.events import _stream_local, _stream_redis
-from backend.app.api.v1.tasks import _stream_local_tasks, _stream_redis_tasks
-from backend.app.api.v1.recommendations import _get_idempotency_cache, _set_idempotency_cache, _create_and_dispatch_tasks
+from fastapi import HTTPException
+
+from backend.app.api.v1.events import _stream_local, _stream_redis, list_operational_events, create_manual_event
+from backend.app.api.v1.tasks import _stream_local_tasks, _stream_redis_tasks, list_tasks, update_task_status
+from backend.app.api.v1.recommendations import _get_idempotency_cache, _set_idempotency_cache, list_recommendations, get_recommendation_stats
+from backend.app.schemas.schemas import TaskUpdate, OperationalEventCreate
 from backend.app.ai.vector import _embed_query, retrieve_relevant_procedures
 from backend.app.ai.agents import _get_llm_clients, run_reasoning_agent
 from backend.app.core.config import settings
@@ -177,12 +180,6 @@ async def test_run_reasoning_agent_failover_to_heuristic():
 # ---------------------------------------------------------------------------
 # 6. ROUTER EXCEPTION HANDLERS & CORNER CASES (COVERAGE BOOSTS)
 # ---------------------------------------------------------------------------
-from fastapi import HTTPException
-from backend.app.api.v1.recommendations import list_recommendations, get_recommendation_stats
-from backend.app.api.v1.tasks import list_tasks, update_task_status
-from backend.app.api.v1.events import list_operational_events, create_manual_event
-from backend.app.schemas.schemas import TaskUpdate, OperationalEventCreate
-
 @pytest.mark.asyncio
 async def test_list_recommendations_exception():
     db_mock = AsyncMock()

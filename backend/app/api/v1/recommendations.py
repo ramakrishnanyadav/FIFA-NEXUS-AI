@@ -13,6 +13,7 @@ from sqlalchemy import func, case
 import redis.asyncio as aioredis
 import json
 from backend.app.core.database import get_db, get_redis_client, USE_REDIS
+from backend.app.core.auth import verify_api_key
 from backend.app.models.models import Recommendation, Task
 from backend.app.schemas.schemas import RecommendationResponse, RecommendationFeedback
 
@@ -110,8 +111,6 @@ async def get_recommendation_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to compile recommendation metrics."
         )
-
-from backend.app.core.auth import verify_api_key
 
 async def _get_idempotency_cache(redis_client: aioredis.Redis, idempotency_key: uuid.UUID | None) -> dict | None:
     if not (idempotency_key and USE_REDIS):

@@ -2,18 +2,17 @@
 Telemetry API Router.
 Handles high-frequency turnstile and camera sensor ingestions for real-time crowd dynamics tracking.
 """
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
 from backend.app.core.database import get_db, get_redis_client
+from backend.app.core.auth import verify_api_key
 from backend.app.schemas.schemas import TelemetryCreate
 from backend.app.services.telemetry import process_telemetry_input
 
 router = APIRouter()
-
-from backend.app.core.auth import verify_api_key
-
-from typing import Annotated
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED, responses={404: {"description": "Zone not found"}, 500: {"description": "Internal server error"}})
 async def ingest_telemetry(

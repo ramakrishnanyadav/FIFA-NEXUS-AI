@@ -1,6 +1,5 @@
 import pytest
-import uuid
-import math
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from fastapi import status
 from backend.app.main import app
@@ -152,8 +151,6 @@ def test_endpoint_latency_sla():
 # ---------------------------------------------------------------------------
 # 5. HEALTH ENDPOINT SPLIT & TIMING ATTACK TEST
 # ---------------------------------------------------------------------------
-from unittest.mock import patch
-
 def test_public_health_check():
     """
     Verifies that GET /health is public and returns basic service status.
