@@ -19,7 +19,7 @@ This document verifies and tracks the Software Bill of Materials (SBOM) for the 
 
 ## 2. Verification Summary
 
-The regenerated SBOM file at [docs/sbom.json](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/sbom.json) contains a complete, cryptographically hashed inventory of the virtual environment dependencies. Key metrics from the audit include:
+The regenerated SBOM file at [sbom.json](sbom.json) contains a complete, cryptographically hashed inventory of the virtual environment dependencies. Key metrics from the audit include:
 - **Total Tracked Components**: 142 Python packages and library dependencies.
 - **Root Component**: `fifa-nexus-ai`
 - **Metadata**: Each package entry includes its Package URL (PURL), homepage reference, author, exact pinned version, and license expressions where available.
