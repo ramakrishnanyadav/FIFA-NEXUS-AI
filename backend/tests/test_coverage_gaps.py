@@ -1,8 +1,10 @@
-"""
+ï»¿"""
 Targeted branch coverage tests for the four weakest modules.
 
 These tests exercise error paths, 404/500 branches, and offline fallback logic that
 are currently uncovered, pushing total branch coverage meaningfully higher.
+
+Each pytest.raises block contains exactly one invocation (S5783).
 """
 import uuid
 import pytest
@@ -10,12 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
 
-from backend.app.api.v1.tasks import list_tasks, update_task_status
-from backend.app.api.v1.events import list_operational_events, create_manual_event
+from backend.app.api.v1.tasks import list_tasks, update_task_status, task_generator
+from backend.app.api.v1.events import list_operational_events, create_manual_event, event_generator
 from backend.app.api.v1.recommendations import (
     apply_recommendation,
     submit_feedback,
     get_recommendation_stats,
+    list_recommendations,
 )
 from backend.app.api.v1.telemetry import ingest_telemetry
 from backend.app.schemas.schemas import (
@@ -59,8 +62,9 @@ def _redis():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_list_tasks_db_error_raises_500():
+    db = _error_db()
     with pytest.raises(HTTPException) as exc:
-        await list_tasks(_error_db())
+        await list_tasks(db)
     assert exc.value.status_code == 500
 
 
@@ -69,12 +73,15 @@ async def test_list_tasks_db_error_raises_500():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_update_task_status_not_found_raises_404():
+    db = _empty_db()
+    task_update = TaskUpdate(status="COMPLETED")
+    redis = _redis()
     with pytest.raises(HTTPException) as exc:
         await update_task_status(
             task_id=TASK_ID,
-            task_update=TaskUpdate(status="COMPLETED"),
-            db=_empty_db(),
-            redis_client=_redis(),
+            task_update=task_update,
+            db=db,
+            redis_client=redis,
             _="mock-api-key",
         )
     assert exc.value.status_code == 404
@@ -85,12 +92,15 @@ async def test_update_task_status_not_found_raises_404():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_update_task_status_db_error_raises_500():
+    db = _error_db()
+    task_update = TaskUpdate(status="COMPLETED")
+    redis = _redis()
     with pytest.raises(HTTPException) as exc:
         await update_task_status(
             task_id=TASK_ID,
-            task_update=TaskUpdate(status="COMPLETED"),
-            db=_error_db(),
-            redis_client=_redis(),
+            task_update=task_update,
+            db=db,
+            redis_client=redis,
             _="mock-api-key",
         )
     assert exc.value.status_code == 500
@@ -101,8 +111,9 @@ async def test_update_task_status_db_error_raises_500():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_list_events_db_error_raises_500():
+    db = _error_db()
     with pytest.raises(HTTPException) as exc:
-        await list_operational_events(db=_error_db())
+        await list_operational_events(db=db)
     assert exc.value.status_code == 500
 
 
@@ -114,17 +125,18 @@ async def test_create_manual_event_db_error_raises_500():
     db = AsyncMock()
     db.add = MagicMock()
     db.commit.side_effect = Exception("commit failed")
-
+    redis = _redis()
+    event_in = OperationalEventCreate(
+        zone_id=ZONE_ID,
+        source="CAMERA",
+        event_type="CROWD_DENSITY_HIGH",
+        payload={"density": 0.97},
+    )
     with pytest.raises(HTTPException) as exc:
         await create_manual_event(
-            event_in=OperationalEventCreate(
-                zone_id=ZONE_ID,
-                source="CAMERA",
-                event_type="CROWD_DENSITY_HIGH",
-                payload={"density": 0.97},
-            ),
+            event_in=event_in,
             db=db,
-            redis_client=_redis(),
+            redis_client=redis,
             _="mock-api-key",
         )
     assert exc.value.status_code == 500
@@ -135,11 +147,13 @@ async def test_create_manual_event_db_error_raises_500():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_apply_recommendation_not_found_raises_404():
+    db = _empty_db()
+    redis = _redis()
     with pytest.raises(HTTPException) as exc:
         await apply_recommendation(
             recommendation_id=REC_ID,
-            db=_empty_db(),
-            redis_client=_redis(),
+            db=db,
+            redis_client=redis,
             _="mock-api-key",
             idempotency_key=None,
         )
@@ -153,17 +167,16 @@ async def test_apply_recommendation_not_found_raises_404():
 async def test_apply_recommendation_policy_violation_returns_400():
     rec_mock = MagicMock()
     rec_mock.validation_status = "POLICY_VIOLATION"
-
     db = AsyncMock()
     result = MagicMock()
     result.scalars.return_value.first.return_value = rec_mock
     db.execute.return_value = result
-
+    redis = _redis()
     with pytest.raises(HTTPException) as exc:
         await apply_recommendation(
             recommendation_id=REC_ID,
             db=db,
-            redis_client=_redis(),
+            redis_client=redis,
             _="mock-api-key",
             idempotency_key=None,
         )
@@ -171,22 +184,21 @@ async def test_apply_recommendation_policy_violation_returns_400():
 
 
 # ---------------------------------------------------------------------------
-# 8. recommendations.py - apply already_applied short-circuits to 200
+# 8. recommendations.py - apply already_approved short-circuits to 200
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_apply_recommendation_already_approved():
     rec_mock = MagicMock()
     rec_mock.validation_status = "APPROVED"
-
     db = AsyncMock()
     result = MagicMock()
     result.scalars.return_value.first.return_value = rec_mock
     db.execute.return_value = result
-
+    redis = _redis()
     response = await apply_recommendation(
         recommendation_id=REC_ID,
         db=db,
-        redis_client=_redis(),
+        redis_client=redis,
         _="mock-api-key",
         idempotency_key=None,
     )
@@ -198,16 +210,18 @@ async def test_apply_recommendation_already_approved():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_submit_feedback_not_found_raises_404():
+    db = _empty_db()
+    feedback = RecommendationFeedback(
+        accepted=True,
+        applied=True,
+        feedback_rating=4,
+        feedback_comments="Good call",
+    )
     with pytest.raises(HTTPException) as exc:
         await submit_feedback(
             recommendation_id=REC_ID,
-            feedback=RecommendationFeedback(
-                accepted=True,
-                applied=True,
-                feedback_rating=4,
-                feedback_comments="Good call",
-            ),
-            db=_empty_db(),
+            feedback=feedback,
+            db=db,
             _="mock-api-key",
         )
     assert exc.value.status_code == 404
@@ -218,16 +232,18 @@ async def test_submit_feedback_not_found_raises_404():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_submit_feedback_db_error_raises_500():
+    db = _error_db()
+    feedback = RecommendationFeedback(
+        accepted=False,
+        applied=False,
+        feedback_rating=2,
+        feedback_comments="Failed",
+    )
     with pytest.raises(HTTPException) as exc:
         await submit_feedback(
             recommendation_id=REC_ID,
-            feedback=RecommendationFeedback(
-                accepted=False,
-                applied=False,
-                feedback_rating=2,
-                feedback_comments="Failed",
-            ),
-            db=_error_db(),
+            feedback=feedback,
+            db=db,
             _="mock-api-key",
         )
     assert exc.value.status_code == 500
@@ -238,8 +254,9 @@ async def test_submit_feedback_db_error_raises_500():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_get_recommendation_stats_db_error_raises_500():
+    db = _error_db()
     with pytest.raises(HTTPException) as exc:
-        await get_recommendation_stats(db=_error_db())
+        await get_recommendation_stats(db=db)
     assert exc.value.status_code == 500
 
 
@@ -248,21 +265,15 @@ async def test_get_recommendation_stats_db_error_raises_500():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_ingest_telemetry_zone_not_found_raises_404():
+    telemetry = TelemetryCreate(zone_id=ZONE_ID, sensor_type="turnstile", count=10)
+    db = AsyncMock()
+    redis = AsyncMock()
     with patch(
         "backend.app.api.v1.telemetry.process_telemetry_input",
         new=AsyncMock(return_value={"status": "error", "message": "Zone not found"})
     ):
         with pytest.raises(HTTPException) as exc:
-            await ingest_telemetry(
-                telemetry=TelemetryCreate(
-                    zone_id=ZONE_ID,
-                    sensor_type="turnstile",
-                    count=10,
-                ),
-                db=AsyncMock(),
-                redis_client=AsyncMock(),
-                _="mock-api-key",
-            )
+            await ingest_telemetry(telemetry=telemetry, db=db, redis_client=redis, _="mock-api-key")
     assert exc.value.status_code == 404
 
 
@@ -271,30 +282,16 @@ async def test_ingest_telemetry_zone_not_found_raises_404():
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_ingest_telemetry_unexpected_error_raises_500():
+    telemetry = TelemetryCreate(zone_id=ZONE_ID, sensor_type="camera", count=0)
+    db = AsyncMock()
+    redis = AsyncMock()
     with patch(
         "backend.app.api.v1.telemetry.process_telemetry_input",
         new=AsyncMock(side_effect=RuntimeError("unexpected"))
     ):
         with pytest.raises(HTTPException) as exc:
-            await ingest_telemetry(
-                telemetry=TelemetryCreate(
-                    zone_id=ZONE_ID,
-                    sensor_type="camera",
-                    count=0,
-                ),
-                db=AsyncMock(),
-                redis_client=AsyncMock(),
-                _="mock-api-key",
-            )
+            await ingest_telemetry(telemetry=telemetry, db=db, redis_client=redis, _="mock-api-key")
     assert exc.value.status_code == 500
-
-
-# ===========================================================================
-# ADDITIONAL COVERAGE — SSE generators, filter branches, success paths
-# ===========================================================================
-from backend.app.api.v1.tasks import task_generator, list_tasks
-from backend.app.api.v1.events import event_generator, list_operational_events
-from backend.app.api.v1.recommendations import list_recommendations
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +318,6 @@ async def test_task_generator_redis_fail_falls_back_to_local():
     pubsub_mock = AsyncMock()
     pubsub_mock.subscribe.side_effect = Exception("Redis down")
     redis.pubsub.return_value = pubsub_mock
-
     with patch("backend.app.core.database.USE_REDIS", True):
         gen = task_generator(redis)
         first_event = await gen.__anext__()
@@ -353,7 +349,6 @@ async def test_event_generator_redis_fail_falls_back_to_local():
     pubsub_mock = AsyncMock()
     pubsub_mock.subscribe.side_effect = Exception("Redis down")
     redis.pubsub.return_value = pubsub_mock
-
     with patch("backend.app.core.database.USE_REDIS", True):
         gen = event_generator(redis)
         first_event = await gen.__anext__()
@@ -362,7 +357,7 @@ async def test_event_generator_redis_fail_falls_back_to_local():
 
 
 # ---------------------------------------------------------------------------
-# 18. list_tasks — role filter branch (line 111)
+# 18. list_tasks - role filter branch (line 111)
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_list_tasks_with_role_filter():
@@ -375,7 +370,7 @@ async def test_list_tasks_with_role_filter():
 
 
 # ---------------------------------------------------------------------------
-# 19. list_tasks — status filter branch (line 113)
+# 19. list_tasks - status filter branch (line 113)
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_list_tasks_with_status_filter():
@@ -388,7 +383,7 @@ async def test_list_tasks_with_status_filter():
 
 
 # ---------------------------------------------------------------------------
-# 20. list_operational_events — event_type filter branch (line 150)
+# 20. list_operational_events - event_type filter branch (line 150)
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_list_events_with_type_filter():
@@ -401,10 +396,10 @@ async def test_list_events_with_type_filter():
 
 
 # ---------------------------------------------------------------------------
-# 21. list_recommendations — trigger_event_id filter branch (line 38)
+# 21. list_recommendations - trigger_event_id filter branch (line 38)
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_list_recommendations_with_trigger_filter():
+async def test_get_recommendations_with_trigger_filter():
     db = AsyncMock()
     result = MagicMock()
     result.scalars.return_value.all.return_value = []
@@ -414,12 +409,13 @@ async def test_list_recommendations_with_trigger_filter():
 
 
 # ---------------------------------------------------------------------------
-# 22. list_recommendations — 500 branch (line 44-50)
+# 22. list_recommendations - 500 branch (line 44-50)
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_list_recommendations_db_error_raises_500():
+async def test_get_recommendations_db_error_raises_500():
+    db = _error_db()
     with pytest.raises(HTTPException) as exc:
-        await list_recommendations(db=_error_db())
+        await list_recommendations(db=db)
     assert exc.value.status_code == 500
 
 
@@ -443,16 +439,17 @@ async def test_update_task_status_success_local_pubsub():
     db.execute.return_value = result
     db.refresh = AsyncMock(return_value=None)
 
-    with patch("backend.app.core.database.USE_REDIS", False):
+    task_update = TaskUpdate(status="COMPLETED")
+    redis = AsyncMock()
+
+    with patch("backend.app.api.v1.tasks.USE_REDIS", False):
         with patch("backend.app.core.database.local_pubsub_bus") as mock_bus:
             returned = await update_task_status(
                 task_id=TASK_ID,
-                task_update=TaskUpdate(status="COMPLETED"),
+                task_update=task_update,
                 db=db,
-                redis_client=AsyncMock(),
+                redis_client=redis,
                 _="mock-api-key",
             )
     mock_bus.publish.assert_called_once()
     assert returned == task_mock
-
-
