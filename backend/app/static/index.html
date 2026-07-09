@@ -148,7 +148,7 @@
             <!-- Simulated Stadium Interactive Map -->
             <div class="glass-panel rounded-2xl p-6 flex flex-col h-[380px] relative overflow-hidden">
                 <h2 class="text-lg font-bold mb-4 flex items-center gap-2" id="map-heading">
-                    <span>🏟️</span> Stadium Spatial Map (Hard Rock Stadium)
+                    <span aria-hidden="true">🏟️</span> Stadium Spatial Map (Hard Rock Stadium)
                 </h2>
                 <section class="flex-1 flex items-center justify-center relative bg-slate-950/60 rounded-xl border border-gray-800" aria-labelledby="map-heading">
                     <!-- Styled Interactive Map Layout -->
@@ -208,7 +208,7 @@
                 <div class="glass-panel rounded-2xl p-6 flex flex-col justify-between">
                     <div>
                         <h2 class="text-lg font-bold mb-4 flex justify-between items-center" id="metrics-heading">
-                            <span>📊 Real-time Zone State</span>
+                            <span><span aria-hidden="true">📊</span> Real-time Zone State</span>
                             <span class="text-xs text-gray-400">Redis Cache Source</span>
                         </h2>
                         <section class="space-y-4" id="zones-list-container" aria-labelledby="metrics-heading">
@@ -219,7 +219,7 @@
 
                 <!-- Simulation & Control Ingestion Station -->
                 <div class="glass-panel rounded-2xl p-6">
-                    <h2 class="text-lg font-bold mb-4" id="sim-heading">⚙️ Simulation Control Center</h2>
+                    <h2 class="text-lg font-bold mb-4" id="sim-heading"><span aria-hidden="true">⚙️</span> Simulation Control Center</h2>
                     <p class="text-sm text-gray-400 mb-6">Trigger synthetic telemetry and incident events to evaluate AI and Optimization reasoning flows.</p>
                     
                     <section class="space-y-4" aria-labelledby="sim-heading">
@@ -259,7 +259,7 @@
             <!-- System & AI Operations Analytics Dashboard -->
             <div class="glass-panel rounded-2xl p-6">
                 <h2 class="text-base font-bold mb-4 flex items-center gap-2">
-                    <span>📊 System & AI Operations Analytics</span>
+                    <span><span aria-hidden="true">📊</span> System & AI Operations Analytics</span>
                     <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded">Live Telemetry</span>
                 </h2>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -301,9 +301,9 @@
             <!-- Event Stream Log -->
             <div class="glass-panel rounded-2xl p-6 h-[250px] flex flex-col">
                 <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex justify-between items-center" id="log-heading">
-                    <span>📡 Real-time Events Log</span>
+                    <span><span aria-hidden="true">📡</span> Real-time Events Log</span>
                     <button onclick="exportLogsReport()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-750 px-2 py-0.5 rounded font-semibold transition-all focus:outline-none">
-                        📥 Export Report
+                        <span aria-hidden="true">📥</span> Export Report
                     </button>
                 </h2>
                 <div id="events-log" class="flex-1 overflow-y-auto space-y-2.5 font-mono text-xs pr-2" role="log" aria-live="polite" aria-labelledby="log-heading">
@@ -314,7 +314,7 @@
             <!-- Active Recommendations & AI Reasoner Outputs -->
             <div class="glass-panel rounded-2xl p-6 flex-1 flex flex-col overflow-hidden min-h-[300px]">
                 <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex justify-between items-center" id="ai-heading">
-                    <span>🤖 Decision Support (AI)</span>
+                    <span><span aria-hidden="true">🤖</span> Decision Support (AI)</span>
                     <span class="text-xs text-indigo-400">Validated</span>
                 </h2>
                 
@@ -330,7 +330,7 @@
     <!-- Dispatch & Active Tasks Panel (Bottom Shelf) -->
     <section aria-label="Ground Dispatch queue" class="glass-panel p-6 border-t border-gray-800 z-10">
         <h2 class="text-base font-bold mb-4 flex items-center gap-2">
-            <span>📢 ground dispatch queue</span>
+            <span><span aria-hidden="true">📢</span> ground dispatch queue</span>
             <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded">Active Tasks</span>
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tasks-container" aria-live="polite">
@@ -460,19 +460,33 @@
         // Check system health for header KPIs
         async function checkSystemHealth() {
             try {
-                const res = await fetch('/health');
+                // Fetch from details endpoint if key is present, otherwise fallback to public /health
+                const endpoint = activeApiKey ? '/health/details' : '/health';
+                const headers = activeApiKey ? { 'X-API-Key': activeApiKey } : {};
+                const res = await fetch(endpoint, { headers });
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        localStorage.removeItem('fifanexus_api_key');
+                        activeApiKey = '';
+                        showApiKeyModal();
+                    }
+                    return;
+                }
                 const data = await res.json();
                 
-                document.getElementById('db-type-val').innerText = data.db_type === "sqlite" ? "SQLite Fallback" : "PostgreSQL";
-                
-                const redisStatusVal = document.getElementById('redis-status-val');
-                const redisDot = document.getElementById('redis-dot');
-                if (data.redis === "online") {
-                    redisStatusVal.innerText = "Online (Cache Active)";
-                    redisDot.className = "h-2 w-2 rounded-full bg-emerald-500 animate-pulse";
-                } else {
-                    redisStatusVal.innerText = "Offline (Bypassed)";
-                    redisDot.className = "h-2 w-2 rounded-full bg-orange-500";
+                // If it's the detailed diagnostic report, update the KPIs
+                if (data.db_type) {
+                    document.getElementById('db-type-val').innerText = data.db_type === "sqlite" ? "SQLite Fallback" : "PostgreSQL";
+                    
+                    const redisStatusVal = document.getElementById('redis-status-val');
+                    const redisDot = document.getElementById('redis-dot');
+                    if (data.redis === "online") {
+                        redisStatusVal.innerText = "Online (Cache Active)";
+                        redisDot.className = "h-2 w-2 rounded-full bg-emerald-500 animate-pulse";
+                    } else {
+                        redisStatusVal.innerText = "Offline (Bypassed)";
+                        redisDot.className = "h-2 w-2 rounded-full bg-orange-500";
+                    }
                 }
                 
                 // Trigger live analytics retrieval

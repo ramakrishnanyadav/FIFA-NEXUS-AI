@@ -38,9 +38,9 @@ async def lifespan(app: FastAPI):
     redis_mode = "Offline (Local Fallback Mode Enabled)" if not USE_REDIS else "Online (Cache Active)"
     logger.info(f"Redis mode: {redis_mode}")
 
-    # OpenAI API Key diagnostics
-    openai_status = "Configured (Live Inference)" if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "mock-key-for-now" else "Missing / Mocked (Heuristics Fallback Active)"
-    logger.info(f"OpenAI API Key: {openai_status}")
+    # LLM diagnostics
+    llm_status = "Configured (Live Inference)" if settings.is_llm_configured else "Missing / Mocked (Heuristics Fallback Active)"
+    logger.info(f"LLM Status: {llm_status}")
 
     # Seeding gate guarded by ENVIRONMENT setting
     if settings.ENVIRONMENT == "development":
@@ -99,18 +99,57 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Cache git commit version on startup to prevent spawning subprocesses on every /version request
+GIT_COMMIT = "unknown"
+try:
+    import subprocess
+    result = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False
+    )
+    if result.returncode == 0:
+        GIT_COMMIT = result.stdout.strip()
+    else:
+        GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
+except Exception:
+    GIT_COMMIT = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
+
+
 @app.get("/")
 async def serve_dashboard():
     return FileResponse(os.path.join(static_dir, "index.html"))
 
+
 @app.get("/health")
 async def health_check():
+    """
+    Public health check endpoint returning basic service status.
+    No internal topology or configuration secrets are disclosed.
+    """
+    return {
+        "status": "healthy",
+        "api_key_configured": bool(settings.API_KEY)
+    }
+
+
+from fastapi import Depends
+from typing import Annotated
+from backend.app.core.auth import verify_api_key
+
+@app.get("/health/details")
+async def health_details(
+    _: Annotated[str, Depends(verify_api_key)]
+):
+    """
+    Private diagnostic endpoint disclosing database, cache, and third-party LLM service states.
+    Authorized with the write API key.
+    """
     uptime_seconds = (datetime.now(UTC) - START_TIME).total_seconds()
-
-    # Check LLM configuration
-    llm_status = "live" if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "mock-key-for-now" else "mocked_fallback"
+    llm_status = "live" if settings.is_llm_configured else "mocked_fallback"
     vector_status = "mocked_fallback"
-
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,
@@ -124,26 +163,16 @@ async def health_check():
         "api_key_configured": bool(settings.API_KEY)
     }
 
+
 @app.get("/version")
 async def version_endpoint():
-    import asyncio
-    git_commit = "unknown"
-    try:
-        process = await asyncio.create_subprocess_exec(
-            "git", "rev-parse", "--short", "HEAD",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await process.communicate()
-        if process.returncode == 0:
-            git_commit = stdout.decode("utf-8").strip()
-    except Exception:
-        git_commit = os.getenv("RENDER_GIT_COMMIT", "7f99f86")
-
+    """
+    Serve cached version metadata without subprocess overhead.
+    """
     return {
         "version": "1.0.0",
         "build": "prod-build",
-        "git_commit": git_commit
+        "git_commit": GIT_COMMIT
     }
 
 

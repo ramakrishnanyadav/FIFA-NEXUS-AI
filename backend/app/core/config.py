@@ -37,7 +37,17 @@ class Settings(BaseSettings):
     FEATHERLESS_MODEL: str = Field(default="meta-llama/Llama-3.3-70B-Instruct")
 
     # Security Configuration
+    # Security Configuration
     API_KEY: str = Field(default="")  # Set via API_KEY env var for API protection
+
+    @property
+    def is_llm_configured(self) -> bool:
+        """
+        Determines if any of the OpenAI-compatible LLM provider API keys are active.
+        """
+        def is_valid(key: str) -> bool:
+            return bool(key) and "mock" not in key.lower()
+        return is_valid(self.OPENAI_API_KEY) or is_valid(self.GROQ_API_KEY) or is_valid(self.FEATHERLESS_API_KEY)
 
     # Optional: full DATABASE_URL override (Render, Railway, Heroku inject this directly)
     DATABASE_URL_OVERRIDE: str = Field(default="", alias="DATABASE_URL")

@@ -147,3 +147,55 @@ def test_endpoint_latency_sla():
     
     assert response.status_code == status.HTTP_200_OK
     assert latency_ms < 200.0, f"GET /api/v1/zones took too long: {latency_ms:.2f}ms (SLA: 200ms)"
+
+
+# ---------------------------------------------------------------------------
+# 5. HEALTH ENDPOINT SPLIT & TIMING ATTACK TEST
+# ---------------------------------------------------------------------------
+from unittest.mock import patch
+
+def test_public_health_check():
+    """
+    Verifies that GET /health is public and returns basic service status.
+    """
+    response = client.get("/health")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "api_key_configured" in data
+
+
+def test_private_health_details():
+    """
+    Verifies that GET /health/details is protected by API key.
+    """
+    # 1. No key -> 401
+    res_no_key = client.get("/health/details")
+    assert res_no_key.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # 2. Invalid key -> 401
+    res_invalid_key = client.get("/health/details", headers={"X-API-Key": "wrong-key"})
+    assert res_invalid_key.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # 3. Valid key -> 200 with details
+    valid_key = settings.API_KEY or "fifanexus_api_key_2026"
+    with patch.object(settings, "API_KEY", valid_key):
+        res_valid = client.get("/health/details", headers={"X-API-Key": valid_key})
+        assert res_valid.status_code == status.HTTP_200_OK
+        data = res_valid.json()
+        assert "db_type" in data
+        assert "redis" in data
+        assert "uptime" in data
+
+
+def test_api_key_timing_attack_compare_digest():
+    """
+    Timing Attack Mitigation: Verifies that secrets.compare_digest is utilized
+    for API key comparisons.
+    """
+    with patch("backend.app.core.auth.secrets.compare_digest", return_value=True) as mock_compare:
+        valid_key = settings.API_KEY or "fifanexus_api_key_2026"
+        with patch.object(settings, "API_KEY", valid_key):
+            response = client.get("/health/details", headers={"X-API-Key": valid_key})
+            assert response.status_code == status.HTTP_200_OK
+            mock_compare.assert_called_once_with(valid_key, valid_key)

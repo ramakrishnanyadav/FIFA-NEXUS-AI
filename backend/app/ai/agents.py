@@ -120,9 +120,9 @@ async def run_reasoning_agent(context: dict, target_role: str) -> dict:
     candidates = _get_llm_clients()
     correlation_id = str(context.get("zone_id", ""))
 
-    if not candidates:
+    if not settings.is_llm_configured or not candidates:
         logger.info(
-            "No LLM API keys configured (OPENAI_API_KEY / GROQ_API_KEY / FEATHERLESS_API_KEY). Using heuristic fallback.",
+            "No LLM API keys configured. Using heuristic fallback.",
             extra={"correlation_id": correlation_id}
         )
         return generate_heuristic_recommendation(context, target_role)
