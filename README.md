@@ -60,6 +60,14 @@
 | [innovation.md](docs/innovation.md) | Structural design and predictive context boundaries |
 | [evaluation.md](docs/evaluation.md) | ML forecast baselines, safety gate validation, and benchmark methodology |
 | [walkthrough.md](docs/walkthrough.md) | Latency analysis, optimization engine rationale, and live demo storyboard |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component overview and E2E Telemetry-to-Task sequence diagrams |
+| [VERIFICATION.md](docs/VERIFICATION.md) | Full 40-test traceability matrix, coverage reports, complexity (Radon), and typing (Mypy) results |
+| [SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) | STRIDE mitigations, Bandit/Ruff reports, container hardening, and audit links |
+| [THREAT_MODEL.md](docs/THREAT_MODEL.md) | Comprehensive STRIDE threat model across all trust boundaries |
+| [DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) | Raw `pip-audit` output and honest per-package analysis |
+| [ERRORS.md](docs/ERRORS.md) | RFC 7807 problem details HTTP error catalog and recovery/fallback paths |
+| [ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | WCAG 2.1 Level AA conformance statement and gap analysis |
+| [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Pre-flight release hygiene checklist and production smoke checks |
 
 ---
 

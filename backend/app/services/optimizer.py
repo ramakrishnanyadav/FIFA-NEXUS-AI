@@ -32,7 +32,7 @@ def optimize_candidate_actions(
     # Let rules.py handle strict policy gate checks.
     # The optimizer passes actions cleanly to the next stage.
     filtered_actions = list(candidate_actions)
-    policy_flags = []
+    policy_flags: list[str] = []
 
     # Estimated operational sustainability metric dynamically based on action complexity and occupancy ratio.
     # High-impact actions (bypass gates, redirects) save more time than local/signage actions.

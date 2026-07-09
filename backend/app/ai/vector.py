@@ -85,7 +85,7 @@ async def retrieve_relevant_procedures(
                             f"Semantic RAG: retrieved {len(search_result)} SOPs for '{query_text[:60]}'",
                             extra={"correlation_id": str(stadium_id)}
                         )
-                        return [r.payload["text"] for r in search_result]
+                        return [r.payload["text"] for r in search_result if r.payload]
                 except Exception as embed_err:
                     logger.warning(
                         f"OpenAI embedding failed: {embed_err}. Falling back to category filter.",
@@ -104,7 +104,7 @@ async def retrieve_relevant_procedures(
                 limit=3
             )[0]
             if results:
-                return [r.payload["text"] for r in results]
+                return [r.payload["text"] for r in results if r.payload]
 
     except Exception as e:
         logger.warning(
