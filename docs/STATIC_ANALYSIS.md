@@ -59,4 +59,5 @@ This document summarizes the objective quality indicators, type safety checks, d
   - **`langsmith`** (Version `0.1.147`): 3 findings.
   - **`pip`** (Version `24.0`): 5 findings.
   - **`starlette`** (Version `0.37.2`): 8 findings (CVE-2026-48818, CVE-2026-48817, etc.).
+  - *Note: langchain-core, langgraph, langsmith, and this pip/starlette version are venv artifacts from unrelated experimentation, not resolved dependencies of this project (see [DEPENDENCY_AUDIT.md](file:///c:/Users/Ramakrishna/OneDrive/Pictures/java/Documents/Projects/week4/docs/DEPENDENCY_AUDIT.md)).*
 - **Audit Cadence Recommendation**: Upgrade Starlette to `0.40.0+` or `1.0.1+` and LangChain dependencies to their latest releases as soon as production testing cycles permit.
