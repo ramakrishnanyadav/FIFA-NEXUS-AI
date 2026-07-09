@@ -1,7 +1,6 @@
-from typing import List
 
 def calculate_sliding_window_features(
-    historical_occupancy: List[int],
+    historical_occupancy: list[int],
     window_size: int = 5
 ) -> dict:
     """

@@ -9,7 +9,7 @@ Saves the trained model to ml/models/lgbm_zone_regressor.pkl.
 import numpy as np
 import pickle
 import os
-from typing import Dict, Any
+from typing import Any
 
 # --- Synthetic data generation for training ---
 def generate_synthetic_training_data(n_samples: int = 2000) -> tuple:
@@ -51,7 +51,7 @@ def generate_synthetic_training_data(n_samples: int = 2000) -> tuple:
     return X, y
 
 
-def train_and_save(model_path: str = "ml/models/lgbm_zone_regressor.pkl") -> Dict[str, Any]:
+def train_and_save(model_path: str = "ml/models/lgbm_zone_regressor.pkl") -> dict[str, Any]:
     """Train LightGBM regressor and save to disk."""
     try:
         import lightgbm as lgb

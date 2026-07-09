@@ -1,7 +1,7 @@
 import time
 import requests
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 BACKEND_URL = "http://localhost:8000/api/v1"
 
@@ -67,7 +67,7 @@ def run_generator():
             "zone_id": gate_a["id"],
             "sensor_type": "camera",
             "count": count,
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z")
         }
         
         print(f"\n[Tick {i+1}/5] Posting telemetry: Zone: {gate_a['name']}, Count: {count}/{safe_capacity} ({(count/safe_capacity)*100:.1f}%)")

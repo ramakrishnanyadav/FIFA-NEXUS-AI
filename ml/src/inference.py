@@ -6,7 +6,6 @@ regressor. Falls back to a linear trend projection if the model file is unavaila
 """
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
 import os
 import pickle
 import numpy as np
@@ -33,7 +32,7 @@ app = FastAPI(
 
 class PredictionRequest(BaseModel):
     zone_id: str
-    historical_occupancy_15m: List[int]
+    historical_occupancy_15m: list[int]
     safe_capacity: int
     minutes_to_match_kickoff: int
 
@@ -64,13 +63,13 @@ def _lgbm_predict(req: PredictionRequest) -> tuple[int, int]:
     rolling_avg = float(np.mean(recent))
     capacity_ratio = float(current) / float(req.safe_capacity) if req.safe_capacity else 0.5
     # Feature vector: [rolling_avg, trend_slope, minutes_to_kickoff, capacity_ratio, day_of_week=3(mid-week)]
-    X = np.array([[rolling_avg, trend, float(req.minutes_to_match_kickoff), capacity_ratio, 3.0]])
-    pred_15m = max(0, int(_model.predict(X)[0]))
+    x = np.array([[rolling_avg, trend, float(req.minutes_to_match_kickoff), capacity_ratio, 3.0]])
+    pred_15m = max(0, int(_model.predict(x)[0]))
 
     # Predict 30m by projecting with trend acceleration
     trend_30m = trend * 1.5
-    X_30m = np.array([[pred_15m, trend_30m, max(0, float(req.minutes_to_match_kickoff) - 15), capacity_ratio, 3.0]])
-    pred_30m = max(0, int(_model.predict(X_30m)[0]))
+    x_30m = np.array([[pred_15m, trend_30m, max(0, float(req.minutes_to_match_kickoff) - 15), capacity_ratio, 3.0]])
+    pred_30m = max(0, int(_model.predict(x_30m)[0]))
 
     return pred_15m, pred_30m
 
