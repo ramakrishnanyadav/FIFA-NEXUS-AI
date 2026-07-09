@@ -1,3 +1,8 @@
+"""
+Safety Rules Engine.
+Implements the deterministic safety gate to intercept and validate GenAI-proposed actions
+against stadium security, crowd capacity, and accessibility directives.
+"""
 import re
 
 # Static Policy Directives list

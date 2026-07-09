@@ -1,3 +1,7 @@
+"""
+Assistant API Router.
+Handles natural language operator queries via the operations copilot chat interface.
+"""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,9 +14,15 @@ from backend.app.core.auth import verify_api_key
 router = APIRouter()
 
 class ChatRequest(BaseModel):
+    """
+    Schema representing a chat prompt from the operator.
+    """
     message: str
 
 class ChatResponse(BaseModel):
+    """
+    Schema representing the assistant's processed response and detected operational intent.
+    """
     response: str
     intent: str
 
@@ -69,6 +79,11 @@ async def chat_assistant(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[str, Depends(verify_api_key)]
 ):
+    """
+    Operations copilot query endpoint.
+    Processes natural language text from operators to query stadium zone status, volunteer tasks,
+    routing recommendations, or fallback capabilities.
+    """
     msg_lower = request.message.lower()
 
     if "gate a" in msg_lower:

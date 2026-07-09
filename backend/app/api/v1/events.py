@@ -1,3 +1,7 @@
+"""
+Operational Events API Router.
+Handles manual operations alert injection, real-time alert SSE streaming, and alert history logging.
+"""
 import uuid
 import json
 from datetime import datetime, UTC
@@ -76,6 +80,9 @@ async def event_generator(redis_client: aioredis.Redis):
 async def stream_operational_events(
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)]
 ):
+    """
+    Establish a Server-Sent Events (SSE) connection to stream operational events and alerts in real-time.
+    """
     return StreamingResponse(
         event_generator(redis_client),
         media_type="text/event-stream"
@@ -88,6 +95,9 @@ async def create_manual_event(
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
     _: Annotated[str, Depends(verify_api_key)]
 ):
+    """
+    Manually injects an operational alert (e.g. overcrowding or security breach) into the system.
+    """
     try:
         from backend.app.core.logging import correlation_id_ctx
         ctx_corr = correlation_id_ctx.get()

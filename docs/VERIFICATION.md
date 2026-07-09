@@ -3,7 +3,7 @@
 > **Date**: 2026-07-09
 > **Python**: 3.11.9
 > **pytest**: 8.2.2 · anyio 4.14.1 · pytest-asyncio 0.23.7
-> **Result**: ✅ 40 / 40 passed · Branch coverage: 68%
+> **Result**: ✅ 67 / 67 passed · Branch coverage: 77%
 
 All test names taken directly from `pytest --collect-only -q` — not from memory.
 
@@ -13,100 +13,114 @@ All test names taken directly from `pytest --collect-only -q` — not from memor
 
 ### API Surface & Security
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| Health check | `main.py → GET /health` | `test_health_endpoint` | 200 with valid JSON body |
-| Write auth enforcement | `auth.py → verify_api_key` | `test_unauthorized_post_endpoints` | 401 on missing key |
-| Invalid key rejection | `auth.py → verify_api_key` | `test_invalid_api_key_header` | 401, not 500 |
-| Schema validation | `schemas.py → Pydantic v2` | `test_invalid_telemetry_schema` | 422 on malformed body |
-| Rate limiting | `rate_limit.py → RateLimitMiddleware` | `test_rate_limiter_write_limits` | 429 after threshold |
-| Zone listing | `zones.py → GET /zones` | `test_get_zones_endpoint` | Valid list, correct schema |
-| Task listing | `tasks.py → GET /tasks` | `test_get_tasks_endpoint` | Valid list, correct schema |
-| 404 handling | `main.py → FastAPI default handler` | `test_404_not_found` | 404, not 500 |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| Health check | `main.py → GET /health` | 200 with valid JSON body | `test_health_endpoint` | ✅ Passed |
+| Write auth enforcement | `auth.py → verify_api_key` | 401 on missing key | `test_unauthorized_post_endpoints` | ✅ Passed |
+| Invalid key rejection | `auth.py → verify_api_key` | 401, not 500 | `test_invalid_api_key_header` | ✅ Passed |
+| Schema validation | `schemas.py → Pydantic v2` | 422 on malformed body | `test_invalid_telemetry_schema` | ✅ Passed |
+| Rate limiting | `rate_limit.py → RateLimitMiddleware` | 429 after threshold | `test_rate_limiter_write_limits` | ✅ Passed |
+| Zone listing | `zones.py → GET /zones` | Valid list, correct schema | `test_get_zones_endpoint` | ✅ Passed |
+| Task listing | `tasks.py → GET /tasks` | Valid list, correct schema | `test_get_tasks_endpoint` | ✅ Passed |
+| 404 handling | `main.py → FastAPI default handler` | 404, not 500 | `test_404_not_found` | ✅ Passed |
+| Security Headers | `rate_limit.py → SecurityHeadersMiddleware` | CSP, XFO, Referrer-Policy, nosniff headers present | `test_security_headers_presence` | ✅ Passed |
+| Trusted Hosts | `main.py → TrustedHostMiddleware` | Rejects untrusted hosts with 400 | `test_trusted_host_enforcement` | ✅ Passed |
 
 ---
 
 ### Robustness & Schema Contracts
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| JSON schema contracts | `schemas.py → ZoneResponseSchema` | `test_schema_contracts` | Pydantic model validates real API response |
-| DB rollback on failure | `telemetry.py → db.rollback()` | `test_database_transaction_rollback` | Rollback executed; no partial write |
-| Idempotency under load | `telemetry.py → idempotency key check` | `test_telemetry_ingestion_idempotency_stress` | Duplicate key deduplicated under stress |
-| Concurrent ingestion safety | `telemetry.py → async db writes` | `test_concurrent_telemetry_ingestion` | No deadlock or state corruption |
-| Optimizer fuzz tolerance | `optimizer.py → rank_actions()` | `test_optimizer_property_fuzz` | Valid output across 100+ random inputs |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| JSON schema contracts | `schemas.py → ZoneResponseSchema` | Pydantic model validates real API response | `test_schema_contracts` | ✅ Passed |
+| DB rollback on failure | `telemetry.py → db.rollback()` | Rollback executed; no partial write | `test_database_transaction_rollback` | ✅ Passed |
+| Idempotency under load | `telemetry.py → idempotency key check` | Duplicate key deduplicated under stress | `test_telemetry_ingestion_idempotency_stress` | ✅ Passed |
+| Concurrent ingestion safety | `telemetry.py → async db writes` | No deadlock or state corruption | `test_concurrent_telemetry_ingestion` | ✅ Passed |
+| Optimizer fuzz tolerance | `optimizer.py → rank_actions()` | Valid output across 100+ random inputs | `test_optimizer_property_fuzz` | ✅ Passed |
+| Telemetry null/negative payloads | `telemetry.py → ingest_telemetry` | HTTP 422, never HTTP 500 | `test_telemetry_adversarial_payloads` | ✅ Passed |
+| Events malformed payload input | `events.py → create_manual_event` | HTTP 422, never HTTP 500 | `test_manual_event_adversarial_payloads` | ✅ Passed |
 
 ---
 
 ### ML Accuracy & Safety Gate
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| ML prediction accuracy | `ml/src/inference.py → LightGBM` | `test_ml_prediction_accuracy` | Error within declared tolerance |
-| Policy gate precision/recall | `rules.py → validate_policy_rules()` | `test_policy_validator_precision_recall` | Precision ≥ 0.95, recall ≥ 0.90 |
-| Constraint optimizer ranking | `optimizer.py → rank_actions()` | `test_optimization_ranking` | Correct priority order on all cases |
-| End-to-end gate validation | `rules.py + recommend.py` | `test_policy_gate_end_to_end` | Valid passes, violations blocked |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| ML prediction accuracy | `ml/src/inference.py → LightGBM` | Error within declared tolerance | `test_ml_prediction_accuracy` | ✅ Passed |
+| Policy gate precision/recall | `rules.py → validate_policy_rules()` | Precision ≥ 0.95, recall ≥ 0.90 | `test_policy_validator_precision_recall` | ✅ Passed |
+| Constraint optimizer ranking | `optimizer.py → rank_actions()` | Correct priority order on all cases | `test_optimization_ranking` | ✅ Passed |
+| End-to-end gate validation | `rules.py + recommend.py` | Valid passes, violations blocked | `test_policy_gate_end_to_end` | ✅ Passed |
 
 ---
 
 ### End-to-End Pipeline
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| Full operational pipeline | `telemetry → predict → recommend → task` | `test_full_operational_pipeline` | No error, correct state transitions |
-| Chaos / graceful degradation | `agents.py → heuristic fallback` | `test_chaos_graceful_degradation` | Heuristic result when all LLMs offline |
-| Heuristic passes policy gate | `recommend.py + rules.py` | `test_heuristic_output_passes_rules_validation` | Heuristic output validates against same gate as LLM |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| Full operational pipeline | `telemetry → predict → recommend → task` | No error, correct state transitions | `test_full_operational_pipeline` | ✅ Passed |
+| Chaos / graceful degradation | `agents.py → heuristic fallback` | Heuristic result when all LLMs offline | `test_chaos_graceful_degradation` | ✅ Passed |
+| Heuristic passes policy gate | `recommend.py + rules.py` | Heuristic output validates against same gate as LLM | `test_heuristic_output_passes_rules_validation` | ✅ Passed |
 
 ---
 
 ### Observability & Traceability
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| Correlation ID isolation | `logging.py → ContextVar` | `test_correlation_id_concurrency_isolation` | Unique ID per request under 50 concurrent |
-| Correlation ID propagation | `middleware/observability → DB event` | `test_telemetry_propagation_matches_header` | Header value matches `OperationalEvent.correlation_id` |
-| ID present on error responses | `CorrelationIdMiddleware` | `test_correlation_id_on_unauthorized_error` | `X-Correlation-ID` header on 401 |
-| ContextVar reset between requests | `logging.py → ContextVar` | `test_context_cleanliness_after_request` | No cross-request contamination |
-| Structured log completeness | `logging.py → JSONFormatter` | `test_log_consistency` | All required keys present in every log line |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| Correlation ID isolation | `logging.py → ContextVar` | Unique ID per request under 50 concurrent | `test_correlation_id_concurrency_isolation` | ✅ Passed |
+| Correlation ID propagation | `middleware/observability → DB event` | Header value matches `OperationalEvent.correlation_id` | `test_telemetry_propagation_matches_header` | ✅ Passed |
+| ID present on error responses | `CorrelationIdMiddleware` | `X-Correlation-ID` header on 401 | `test_correlation_id_on_unauthorized_error` | ✅ Passed |
+| ContextVar reset between requests | `logging.py → ContextVar` | No cross-request contamination | `test_context_cleanliness_after_request` | ✅ Passed |
+| Structured log completeness | `logging.py → JSONFormatter` | All required keys present in every log line | `test_log_consistency` | ✅ Passed |
 
 ---
 
 ### Service-Layer Units
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| Threshold breach detection | `telemetry.py → threshold check` | `test_telemetry_threshold_breach` | Correct alert category triggered |
-| Constraint optimizer | `optimizer.py → rank_actions()` | `test_constraint_optimization` | Highest-scored action selected |
-| Policy rules engine | `rules.py → validate_policy_rules()` | `test_policy_rules_engine` | Violations flagged; compliant passed |
-| Chat assistant | `assistant.py → query_assistant()` | `test_chat_assistant` | Non-empty response for valid query |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| Threshold breach detection | `telemetry.py → threshold check` | Correct alert category triggered | `test_telemetry_threshold_breach` | ✅ Passed |
+| Constraint optimizer | `optimizer.py → rank_actions()` | Highest-scored action selected | `test_constraint_optimization` | ✅ Passed |
+| Policy rules engine | `rules.py → validate_policy_rules()` | Violations flagged; compliant passed | `test_policy_rules_engine` | ✅ Passed |
+| Chat assistant | `assistant.py → query_assistant()` | Non-empty response for valid query | `test_chat_assistant` | ✅ Passed |
+| Performance SLA checks | `main.py → endpoints` | API latency below 200ms threshold | `test_endpoint_latency_sla` | ✅ Passed |
 
 ---
 
-### Regression Guards
+### Regression Guards & Private Helpers
 
-| Capability | Implementation | Test | Evidence |
-|---|---|---|---|
-| API key not leaked | `main.py → /health` | `test_health_does_not_leak_api_key` | Key string absent from response body |
-| Policy violation blocks apply | `recommendations.py → apply_recommendation` | `test_policy_violation_blocks_apply` | 403 returned, not 200 |
-| Zone model field presence | `models.py → Zone.current_occupancy` | `test_zone_model_has_current_occupancy` | Field exists on ORM model |
-| Telemetry updates occupancy | `telemetry.py → Zone update` | `test_telemetry_updates_current_occupancy` | `current_occupancy` incremented |
-| Unknown destination fails closed | `telemetry.py → zone lookup` | `test_unknown_destination_fails_closed` | Error, not silent no-op |
-| LLM failover to heuristic | `agents.py → provider chain` | `test_llm_failover_to_heuristic` | Heuristic result after all providers raise |
-| Redis-offline task fallback | `recommendations.py → local_pubsub_bus` | `test_task_stream_fallback_when_redis_offline` | Local bus used when Redis offline |
-| Optimizer zero-capacity | `optimizer.py → rank_actions()` | `test_optimizer_zero_capacity_no_crash` | No exception on zero-capacity zone |
-| Source zone exclusion | `telemetry.py → routing classifier` | `test_source_zone_not_flagged_as_destination` | Source never proposed as destination |
-| Duplicate telemetry idempotency | `telemetry.py → idempotency key` | `test_duplicate_telemetry_idempotency` | Stored exactly once |
-| Substring false positives | `telemetry.py → routing classifier` | `test_routing_classifier_substring_false_positives` | No false-positive route matches |
+| Capability | Implementation | Evidence | Test | Result |
+|---|---|---|---|---|
+| API key not leaked | `main.py → /health` | Key string absent from response body | `test_health_does_not_leak_api_key` | ✅ Passed |
+| Policy violation blocks apply | `recommendations.py → apply_recommendation` | 403 returned, not 200 | `test_policy_violation_blocks_apply` | ✅ Passed |
+| Zone model field presence | `models.py → Zone.current_occupancy` | Field exists on ORM model | `test_zone_model_has_current_occupancy` | ✅ Passed |
+| Telemetry updates occupancy | `telemetry.py → Zone update` | `current_occupancy` incremented | `test_telemetry_updates_current_occupancy` | ✅ Passed |
+| Unknown destination fails closed | `telemetry.py → zone lookup` | Error, not silent no-op | `test_unknown_destination_fails_closed` | ✅ Passed |
+| LLM failover to heuristic | `agents.py → provider chain` | Heuristic result after all providers raise | `test_llm_failover_to_heuristic` | ✅ Passed |
+| Redis-offline task fallback | `recommendations.py → local_pubsub_bus` | Local bus used when Redis offline | `test_task_stream_fallback_when_redis_offline` | ✅ Passed |
+| Optimizer zero-capacity | `optimizer.py → rank_actions()` | No exception on zero-capacity zone | `test_optimizer_zero_capacity_no_crash` | ✅ Passed |
+| Source zone exclusion | `telemetry.py → routing classifier` | Source never proposed as destination | `test_source_zone_not_flagged_as_destination` | ✅ Passed |
+| Duplicate telemetry idempotency | `telemetry.py → idempotency key` | Stored exactly once | `test_duplicate_telemetry_idempotency` | ✅ Passed |
+| Substring false positives | `telemetry.py → routing classifier` | No false-positive route matches | `test_routing_classifier_substring_false_positives` | ✅ Passed |
+| Local event SSE generation | `events.py → _stream_local` | Event payload generated successfully | `test_stream_local_generator` | ✅ Passed |
+| Redis event SSE generation | `events.py → _stream_redis` | Event payload streamed successfully | `test_stream_redis_generator` | ✅ Passed |
+| Local task SSE generation | `tasks.py → _stream_local_tasks` | Task payload generated successfully | `test_stream_local_tasks_generator` | ✅ Passed |
+| Redis task SSE generation | `tasks.py → _stream_redis_tasks` | Task payload streamed successfully | `test_stream_redis_tasks_generator` | ✅ Passed |
+| Idempotency cache operations | `recommendations.py → cache` | Save and get cached values correctly | `test_idempotency_cache_read_write` | ✅ Passed |
+| OpenAI query embeddings | `vector.py → _embed_query` | Correct float vector returned | `test_vector_embed_query` | ✅ Passed |
+| Qdrant client offline fallback | `vector.py → retrieve` | Fallback to static JSON SOPs | `test_vector_retrieve_fallback_paths` | ✅ Passed |
+| Provider client ordering | `agents.py → _get_llm_clients` | Ranked OpenAI > Groq > Featherless | `test_llm_clients_priority_order` | ✅ Passed |
+| LLMs unavailable fallback | `agents.py → run_reasoning_agent` | Fallback to heuristic recommendation | `test_run_reasoning_agent_failover_to_heuristic` | ✅ Passed |
 
 ---
 
 ## Run Command
 
 ```bash
-python -m pytest --cov=backend/app --cov-branch --cov-report=term-missing
+pytest --cov=backend/app --cov-branch --cov-report=term-missing
 ```
 
-40 passed · 0 skipped · 0 xfailed · Branch coverage: **68%**
+67 passed · 0 skipped · 0 xfailed · Branch coverage: **77%**
 
 ---
 
@@ -141,4 +155,3 @@ mypy backend/app --ignore-missing-imports --explicit-package-bases
   - Resolved `vector.py` payload indexing issues by adding safe dictionary check guards: `[r.payload["text"] for r in results if r.payload]`.
   - Added explicit annotations for local variables and defaultdicts: `policy_flags: list[str] = []` and `requests: defaultdict[str, list[float]] = defaultdict(list)`.
 * *Residual Warnings*: Mypy reports standard type inconsistencies with SQLAlchemy dynamically mapped model columns (e.g. `Column[Any]` vs expected types like `bool`, `datetime`, `int`) and GeoAlchemy2 spatial type declarations, which are known typing limitations in Python ORMs and do not present runtime safety risks.
-

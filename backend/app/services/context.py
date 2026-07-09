@@ -1,3 +1,8 @@
+"""
+Context Collation Service.
+Aggregates live sensor telemetry, predictive occupancy forecasts, and security/SOP vector procedures
+into a unified operational payload (RAG context) for AI reasoning.
+"""
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -15,6 +20,10 @@ async def build_operational_context(
     zone_id: uuid.UUID,
     category: str
 ) -> dict:
+    """
+    Collates current occupancy, recent time-series, ML-based projections, and vector-store SOP
+    documents into a structured dictionary ready for the LLM reasoning pipeline.
+    """
     # 1. Fetch Zone core metadata
     result = await db.execute(select(Zone).where(Zone.id == zone_id))
     zone = result.scalars().first()

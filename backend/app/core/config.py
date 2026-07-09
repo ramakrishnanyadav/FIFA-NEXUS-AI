@@ -37,9 +37,6 @@ class Settings(BaseSettings):
     FEATHERLESS_MODEL: str = Field(default="meta-llama/Llama-3.3-70B-Instruct")
 
     # Security Configuration
-    JWT_SECRET_KEY: str = Field(default="")  # Set via JWT_SECRET_KEY env var — required for token signing
-    JWT_ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=120)
     API_KEY: str = Field(default="")  # Set via API_KEY env var for API protection
 
     # Optional: full DATABASE_URL override (Render, Railway, Heroku inject this directly)

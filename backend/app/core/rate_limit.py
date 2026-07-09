@@ -1,3 +1,7 @@
+"""
+Rate Limiting and Security Headers Middleware.
+Enforces client rate limits and appends OWASP-recommended HTTP security headers to all responses.
+"""
 import time
 from collections import defaultdict
 from fastapi import Request, status
@@ -5,6 +9,9 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class RateLimiter:
+    """
+    In-memory token bucket rate limiter tracking requests within sliding windows.
+    """
     def __init__(self, limit: int, window: int = 60):
         self.limit = limit
         self.window = window
@@ -26,6 +33,10 @@ write_limiter = RateLimiter(limit=30, window=60)
 read_limiter = RateLimiter(limit=100, window=60)
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that intercepts incoming /api/v1 requests and enforces separate read and write
+    rate limit buckets based on client IP and optional API keys.
+    """
     async def dispatch(self, request: Request, call_next):
         # We only rate-limit /api/v1 endpoints
         if not request.url.path.startswith("/api/v1"):
@@ -65,6 +76,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that appends security headers to all HTTP responses to harden the application
+    against XSS, clickjacking, MIME sniffing, and profiling.
+    """
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Frame-Options"] = "DENY"

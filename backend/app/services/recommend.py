@@ -1,3 +1,8 @@
+"""
+Recommendation Service.
+Orchestrates context collation, AI generation, constraint optimization, and safety gate verification
+for crowd management decisions.
+"""
 import uuid
 from datetime import datetime, UTC
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +19,14 @@ async def generate_and_validate_recommendations(
     event: OperationalEvent,
     target_role: str = "VOLUNTEER"
 ) -> Recommendation:
+    """
+    Triggers the core decision-support engine flow:
+    1. Collects live RAG context (telemetry, predictions, SOPs).
+    2. Runs AI Agent reasoning to draft candidate actions.
+    3. Optimizes and scores candidate actions based on resource constraints.
+    4. Evaluates actions against deterministic stadium safety policy rules.
+    5. Saves and returns the final validated Recommendation entity.
+    """
     # 1. Build operational context compiling live state + predictions + SOPs
     category = event.payload.get("category", "CROWD") if event.payload else "CROWD"
     if event.event_type == "CROWD_DENSITY_HIGH":

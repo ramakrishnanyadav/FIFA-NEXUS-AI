@@ -17,6 +17,7 @@
          │                              [LightGBM Inference]
          │                              [OpenAI / Groq / Featherless]
          │                              [Policy Gate]
+         │                                       │
          ▼                                       │
 [PostgreSQL / PostGIS]   [Redis]   [Qdrant]  ◀──┘
 ```
@@ -33,39 +34,45 @@
 
 ### Boundary 1: External → API
 
-| Threat | Risk | Mitigation in place | Residual risk |
-|---|---|---|---|
-| **S**poofing — impersonating a legitimate client | Medium | `X-API-Key` header validated on every write endpoint | Key is shared; a leaked key grants full write access until rotated |
-| **T**ampering — malformed request bodies | Low | Pydantic v2 schema validation; 422 on type errors | None — Pydantic handles this |
-| **R**epudiation — no audit trail of who called what | Low | `X-Correlation-ID` logged on every request | No per-user attribution (shared key) |
-| **I**nformation disclosure — error messages leaking internals | Low | FastAPI default exception handlers; no stack traces in prod responses | Uncaught exceptions may leak model/filename via default handler |
-| **D**enial of service — request flooding | Medium | In-memory rate limiter per IP | Rate limiter is not distributed; multiple replicas would not share limits |
-| **E**levation of privilege — accessing admin-only routes | Low | No RBAC implemented; all authenticated calls have equal privilege | Future work: role-based access |
+| STRIDE Threat | Likelihood | Impact | Mitigation in place | Residual Risk |
+|---|---|---|---|---|
+| **S**poofing — impersonating a legitimate client | Medium | High | `X-API-Key` header validated on every write endpoint. | **Medium** (Leaked key grants full write access until rotated) |
+| **T**ampering — malformed request bodies | Low | Medium | Pydantic v2 schema validation; 422 on type errors. | **Low** (Pydantic handles invalid formats natively) |
+| **R**epudiation — no audit trail of who called what | Medium | Low | `X-Correlation-ID` logged on every request. | **Low** (Logs track session trace; no per-user attribution due to shared key) |
+| **I**nformation disclosure — error leakage | Low | Low | FastAPI default exception handlers; no stack traces in prod responses. | **Low** (Uncaught exceptions logged internally; clean error shapes returned) |
+| **D**enial of service — request flooding | High | Medium | In-memory rate limiter per IP. | **Medium** (Limit is local; multiple replicas would have independent limits) |
+| **E**levation of privilege — access escalation | Low | High | API authentication required for writes; reads are public. | **Low** (No administrative routes exist in the MVP) |
+
+---
 
 ### Boundary 2: API → Database
 
-| Threat | Risk | Mitigation in place | Residual risk |
-|---|---|---|---|
-| **S**poofing — connecting as wrong DB user | Low | Credentials via env vars; single DB user | No row-level security |
-| **T**ampering — SQL injection | Low | SQLAlchemy ORM with parameterised queries throughout | None — no raw SQL |
-| **I**nformation disclosure — DB credentials in logs | Low | Credentials not logged; `DATABASE_URL` in env only | Env vars visible to any process in the container |
-| **D**enial of service — connection pool exhaustion | Low | SQLAlchemy connection pool with timeout | High traffic without connection pool limit could exhaust |
+| STRIDE Threat | Likelihood | Impact | Mitigation in place | Residual Risk |
+|---|---|---|---|---|
+| **S**poofing — connecting as wrong DB user | Low | High | Credentials via env vars; single restricted DB user. | **Low** (Containerized database instance connection is private) |
+| **T**ampering — SQL injection | Low | High | SQLAlchemy ORM with parameterized queries throughout. | **Low** (No raw SQL strings constructed from input) |
+| **I**nformation disclosure — DB credentials leakage | Low | High | Credentials not logged; `DATABASE_URL` in env only. | **Low** (Standard secure environment variables configuration) |
+| **D**enial of service — connection pool exhaustion | Medium | Medium | SQLAlchemy connection pool with timeout limits. | **Low** (Managed connection pooling prevents server exhaustion) |
+
+---
 
 ### Boundary 3: API → LLM Providers
 
-| Threat | Risk | Mitigation in place | Residual risk |
-|---|---|---|---|
-| **S**poofing — response from a compromised provider | Medium | HTTPS only; TLS cert validation via `httpx` defaults | No provider response signing |
-| **T**ampering — prompt injection via user-controlled content | Medium | Context builder assembles prompt from structured DB fields only (not free text from the request body) | Operational event `payload` field (JSON) feeds into context; malicious payload could influence reasoning |
-| **I**nformation disclosure — stadium operational data sent to third party | Medium | Accepted risk; provider ToS governs data handling | Cannot be fully eliminated without on-premise LLM |
-| **D**enial of service — provider quota exhaustion | Low | Failover chain (OpenAI → Groq → Featherless → heuristic); heuristic never fails | Heuristic output quality is lower |
+| STRIDE Threat | Likelihood | Impact | Mitigation in place | Residual Risk |
+|---|---|---|---|---|
+| **S**poofing — response from a compromised provider | Low | High | HTTPS only; TLS cert validation via `httpx` defaults. | **Low** (Standard TLS prevents interception/spoofing) |
+| **T**ampering — prompt injection via user content | Medium | Medium | Context builder assembles prompt from structured DB fields only (no free text from request body). | **Low** (Events payload JSON is validated, minimizing injection vectors) |
+| **I**nformation disclosure — data leakage to provider | Medium | Medium | Accepted risk; provider ToS governs data handling. | **Medium** (Transmits data to third party; requires on-premise model to eliminate) |
+| **D**enial of service — provider quota exhaustion | High | Low | Failover chain (OpenAI → Groq → Featherless → heuristic fallback). | **Low** (Heuristic fallback ensures continuous operation) |
+
+---
 
 ### Boundary 4: API → Redis / Qdrant
 
-| Threat | Risk | Mitigation in place | Residual risk |
-|---|---|---|---|
-| **T**ampering — corrupted cache entry | Low | Cache used for recommendations only; stale data expires | Corrupted entry served until TTL |
-| **D**enial of service — Redis unavailable | Low | Graceful fallback to local pubsub bus | Fallback is not distributed |
+| STRIDE Threat | Likelihood | Impact | Mitigation in place | Residual Risk |
+|---|---|---|---|---|
+| **T**ampering — corrupted cache entry | Low | Medium | Cache used for recommendations only; stale data expires. | **Low** (Short TTL on cached recommendation responses) |
+| **D**enial of service — Redis unavailable | Low | High | Graceful fallback to local in-memory pubsub bus. | **Low** (Local pubsub bus handles streaming fallback cleanly) |
 
 ---
 
@@ -79,9 +86,9 @@
 
 ## Accepted Risks (Hackathon Context)
 
-| Risk | Justification |
-|---|---|
-| Shared API key | Suitable for internal/demo service; production would use per-user JWT/OIDC |
-| In-memory rate limiter | Correct for single instance; production would use Redis-backed limiter |
-| LLM data sharing | Third-party providers; acceptable under Render/demo terms |
-| No Alembic migrations | `create_all()` used; acceptable for demo; production would require Alembic |
+| Risk | Likelihood | Impact | Residual Risk | Justification |
+|---|---|---|---|---|
+| Shared API key | Medium | High | **Medium** | Suitable for internal/demo service; production would use per-user JWT/OIDC. |
+| In-memory rate limiter | High | Medium | **Medium** | Correct for single instance; production would use Redis-backed limiter. |
+| LLM data sharing | Medium | Medium | **Medium** | Third-party providers; acceptable under Render/demo terms. |
+| No Alembic migrations | Low | Low | **Low** | `create_all()` used; acceptable for demo; production would require Alembic. |

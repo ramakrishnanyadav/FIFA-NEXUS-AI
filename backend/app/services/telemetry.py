@@ -1,3 +1,8 @@
+"""
+Telemetry Service.
+Coordinates processing of turnstile/camera sensors, updates Redis state cache, 
+and triggers threshold alerts.
+"""
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,6 +15,10 @@ from datetime import UTC
 
 
 async def _update_redis_occupancy(redis_client: aioredis.Redis, telemetry: TelemetryCreate) -> None:
+    """
+    Updates current occupancy count and time-series queue in Redis.
+    Used for rolling timeseries analysis and forecasting.
+    """
     from backend.app.core.database import USE_REDIS
     if not USE_REDIS:
         return
@@ -126,6 +135,12 @@ async def process_telemetry_input(
     redis_client: aioredis.Redis,
     telemetry: TelemetryCreate
 ) -> dict:
+    """
+    Ingests and processes high-frequency turnstile/camera telemetry data.
+    
+    Checks for timestamp idempotency, updates zone occupancy, records history snapshot,
+    updates Redis sliding-window cache, and executes safety threshold check for alarm triggering.
+    """
     try:
         # 1. Fetch zone details from DB to check capacity thresholds
         result = await db.execute(select(Zone).where(Zone.id == telemetry.zone_id))

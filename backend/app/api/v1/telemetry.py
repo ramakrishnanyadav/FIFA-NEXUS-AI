@@ -1,3 +1,7 @@
+"""
+Telemetry API Router.
+Handles high-frequency turnstile and camera sensor ingestions for real-time crowd dynamics tracking.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
@@ -18,6 +22,13 @@ async def ingest_telemetry(
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
     _: Annotated[str, Depends(verify_api_key)]
 ):
+    """
+    Ingests live sensor telemetry readings (turnstile passenger flows or camera occupancy counts).
+    
+    Validates input schemas, resolves target zones, dynamically updates occupancy counts in the
+    canonical cache, persists occupancy snapshot history, triggers predictive forecast analysis, 
+    and issues downstream operations alerts if safe capacity thresholds are breached.
+    """
     try:
         result = await process_telemetry_input(db, redis_client, telemetry)
         if result.get("status") == "error":

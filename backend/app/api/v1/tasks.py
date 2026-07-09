@@ -1,3 +1,7 @@
+"""
+Tasks API Router.
+Handles volunteer dispatch workflow, real-time SSE task updates, and task state tracking.
+"""
 from typing import Annotated
 import asyncio
 import uuid
@@ -77,6 +81,9 @@ async def task_generator(redis_client: aioredis.Redis):
 async def stream_tasks(
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)]
 ):
+    """
+    Establish a Server-Sent Events (SSE) connection to stream task dispatch actions in real-time.
+    """
     return StreamingResponse(
         task_generator(redis_client),
         media_type="text/event-stream"
@@ -90,6 +97,13 @@ async def list_tasks(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0
 ):
+    """
+    Retrieves a paginated list of ground task dispatches.
+    
+    Optional filters:
+    - `role`: Filter by assigned dispatcher/volunteer/security role.
+    - `status`: Filter by current lifecycle state (e.g., PENDING, DISPATCHED, COMPLETED).
+    """
     try:
         query = select(Task)
         if role:
@@ -119,6 +133,9 @@ async def update_task_status(
     redis_client: Annotated[aioredis.Redis, Depends(get_redis_client)],
     _: Annotated[str, Depends(verify_api_key)]
 ):
+    """
+    Updates the execution state of an operational dispatch task (e.g. marking it as COMPLETED or CANCELLED).
+    """
     try:
         result = await db.execute(select(Task).where(Task.id == task_id))
         task = result.scalars().first()

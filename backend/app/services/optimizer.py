@@ -1,3 +1,7 @@
+"""
+Constraint Optimization Engine.
+Ranks candidate crowd management actions by safety priority, capacity weights, and ESG impact.
+"""
 from typing import Any
 
 def optimize_candidate_actions(

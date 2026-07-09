@@ -1,3 +1,7 @@
+"""
+Predictive Operational Intelligence Engine.
+Interfaces with LightGBM microservice for crowd flow forecasting and risk estimation.
+"""
 import httpx
 from uuid import UUID
 from backend.app.core.config import settings
@@ -9,6 +13,12 @@ async def get_occupancy_prediction(
     safe_capacity: int,
     minutes_to_kickoff: int = 45
 ) -> dict:
+    """
+    Retrieves crowd predictions from the LightGBM service.
+    
+    If the ML microservice is unreachable, falls back to a deterministic, trend-based 
+    local occupancy projection algorithm to guarantee continuity.
+    """
     url = settings.ML_SERVICE_URL
     payload = {
         "zone_id": str(zone_id),

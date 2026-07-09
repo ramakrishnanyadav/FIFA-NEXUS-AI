@@ -96,6 +96,24 @@ Summary: No vulnerabilities in direct project dependencies. Findings are in tran
 
 ---
 
+## API Key Storage & Client-Side Risk Assessment
+
+The live operations dashboard (`index.html`) requires the operator to provide an API key to authorize request ingestion. 
+- **Storage**: The API key is stored in the browser's `localStorage` to preserve session state across page reloads.
+- **XSS Exposure Risk**: Because the dashboard is loaded via HTTP, any Cross-Site Scripting (XSS) vulnerability would allow an attacker to extract the API key from `localStorage`.
+- **Mitigation & Future Path**: In production, the system must transition from static API keys to standard OAuth2/OIDC access tokens stored in secure, `HttpOnly`, `SameSite=Strict` cookies, preventing Javascript-based token extraction. For the current hackathon deployment, the use of `localStorage` is accepted and documented.
+
+---
+
+## Content Security Policy (CSP) & Accepted Risk
+
+The application sets strict security headers via `SecurityHeadersMiddleware`, including `Content-Security-Policy`. 
+- **Inline Event Handlers**: The dashboard layout (`index.html`) relies on several legacy inline event handlers (e.g. `onclick`, `onkeydown`) to bind user interface interactions.
+- **CSP Directive**: To allow the dashboard to function without complete frontend refactoring, the CSP script directive includes `'unsafe-inline'` (`script-src 'self' 'unsafe-inline'`).
+- **Accepted Risk**: While `'unsafe-inline'` increases vulnerability to XSS attacks, it is accepted for this prototype/demo stage. A complete frontend migration to dynamic event listeners (`addEventListener`) and the removal of `'unsafe-inline'` from the CSP header is a priority item on the post-hackathon security roadmap.
+
+---
+
 ## Known Limitations (Not Defects)
 
 | Limitation | Impact | Production path |

@@ -7,9 +7,9 @@ This checklist must be executed and signed off prior to deploying any release ta
 ## 1. Pre-Deployment Verification
 
 ### Code Quality & Security
-- [ ] **Tests**: Run the test suite. All 40 tests must pass with zero failures.
+- [ ] **Tests**: Run the test suite. All 67 tests must pass with zero failures and branch coverage ≥ 75%.
   ```bash
-  python -m pytest --cov=backend/app --cov-branch
+  python -m pytest --cov=backend/app --cov-branch --cov-report=term-missing
   ```
 - [ ] **Linter**: Verify zero warnings from Ruff.
   ```bash
@@ -27,6 +27,10 @@ This checklist must be executed and signed off prior to deploying any release ta
   ```bash
   mypy backend/app --ignore-missing-imports --explicit-package-bases
   ```
+
+### Build & Platform Compatibility
+- [ ] **Python 3.12 Matrix**: Verify that the application builds and passes all tests in a Python 3.12 target environment to prevent syntax or runtime regressions in newer Python versions.
+- [ ] **SBOM Verification**: Ensure that the CycloneDX SBOM (`docs/sbom.json`) is present, up to date with `requirements.txt` pins, and parses as valid JSON.
 
 ---
 
@@ -77,7 +81,15 @@ This checklist must be executed and signed off prior to deploying any release ta
 
 ---
 
-## 5. Post-Deployment Verification (Smoke Checks)
+## 5. Accessibility & Frontend Assets
+
+- [ ] **Skip Link**: Verify that the "Skip to main content" anchor is the first interactive element inside `<body>` and takes focus on `Tab`.
+- [ ] **Reduced Motion**: Verify that all animations (`pulse-breach`, `animate-flow`, `animate-pulse`) are deactivated when the browser triggers `@media (prefers-reduced-motion: reduce)`.
+- [ ] **Focus Styles**: Verify that all zones on the interactive SVG map display high-contrast outline focus rings when keyboard-tabbed.
+
+---
+
+## 6. Post-Deployment Verification (Smoke Checks)
 
 - [ ] **Health Endpoint**: Request `GET /health` and confirm `status: "healthy"`.
 - [ ] **Version Endpoint**: Request `GET /version` to ensure the correct Git SHA is deployed.

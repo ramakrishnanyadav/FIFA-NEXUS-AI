@@ -126,3 +126,67 @@ async def test_chat_assistant():
     resp = await chat_assistant(req, db_mock, "mock_api_key")
     assert resp.intent == "sustainability_info"
     assert "CO2" in resp.response
+
+
+from backend.app.services.recommend import generate_and_validate_recommendations
+from backend.app.models.models import Recommendation, OperationalEvent, Zone
+
+@pytest.mark.asyncio
+async def test_generate_and_validate_recommendations_flow():
+    db_mock = AsyncMock()
+    redis_mock = AsyncMock()
+    
+    event = OperationalEvent(
+        id=uuid.uuid4(),
+        zone_id=uuid.uuid4(),
+        source="CAMERA",
+        event_type="CROWD_DENSITY_HIGH",
+        payload={"category": "CROWD"},
+        received_at=datetime.now(UTC),
+        correlation_id=uuid.uuid4()
+    )
+    
+    zone_mock = Zone(
+        id=event.zone_id,
+        stadium_id=uuid.uuid4(),
+        name="Gate A",
+        zone_type="GATE",
+        safe_capacity=1000,
+        current_occupancy=500
+    )
+    
+    # Mock SQL execution return value for all zones list
+    all_zones_res = MagicMock()
+    all_zones_res.scalars().all.return_value = [zone_mock]
+    db_mock.execute.return_value = all_zones_res
+    
+    context_data = {
+        "current_occupancy": 500,
+        "safe_capacity": 1000,
+        "congestion_risk_score": 0.5,
+        "zone_name": "Gate A"
+    }
+    
+    ai_output_data = {
+        "candidate_actions": ["Deploy signs", "Open East Gate"],
+        "expected_impact": {"time_saving_minutes": 10},
+        "prompt_version": "v1",
+        "model_version": "gpt-4o-mini",
+        "knowledge_version": "v1",
+        "confidence": 0.9,
+        "reasoning_summary": "Reasoning summary test"
+    }
+    
+    with patch("backend.app.services.recommend.build_operational_context", AsyncMock(return_value=context_data)), \
+         patch("backend.app.services.recommend.run_reasoning_agent", AsyncMock(return_value=ai_output_data)):
+             
+        rec = await generate_and_validate_recommendations(db_mock, redis_mock, event)
+        
+        assert isinstance(rec, Recommendation)
+        assert rec.validation_status == "VALIDATED"
+        assert rec.confidence == 0.9
+        assert rec.model_version == "gpt-4o-mini"
+        assert "co2_saved_kg" in rec.expected_impact
+        assert db_mock.add.called
+        assert db_mock.commit.called
+

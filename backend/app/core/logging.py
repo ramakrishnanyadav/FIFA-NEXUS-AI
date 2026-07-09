@@ -1,3 +1,7 @@
+"""
+Structured JSON Logging and Traceability Middleware.
+Integrates Correlation ID propagation across asynchronous tasks using Starlette Middleware and ContextVars.
+"""
 import logging
 import sys
 import json
@@ -58,7 +62,15 @@ logger.addHandler(handler)
 
 # Middleware to manage request-bound correlation IDs
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that extracts or generates a unique correlation ID for every incoming request
+    and propagates it inside the context of all log statements in that request boundary.
+    """
     async def dispatch(self, request: Request, call_next):
+        """
+        Intercepts HTTP requests, sets the ContextVar correlation ID, measures latency,
+        and logs the final structured request details.
+        """
         # Extract from header or generate a new unique correlation ID
         correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
         
