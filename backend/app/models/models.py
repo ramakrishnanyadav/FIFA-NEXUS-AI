@@ -133,7 +133,7 @@ class ZoneOccupancySnapshot(Base):
 class OperationalEvent(Base):
     __tablename__ = "operational_events"
     __table_args__ = (
-        Index("idx_event_zone_received", "zone_id", "received_at"),
+        Index("idx_event_zone_type_received", "zone_id", "event_type", "received_at"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
