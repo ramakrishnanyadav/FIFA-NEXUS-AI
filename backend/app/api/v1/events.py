@@ -21,7 +21,7 @@ router = APIRouter()
 
 EVENTS_STREAM_CHANNEL = "events:stream"
 
-async def _stream_local(local_queue: asyncio.Queue):
+async def _stream_local(local_queue: asyncio.Queue[str]):
     while True:
         try:
             message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
@@ -42,7 +42,7 @@ async def _stream_redis(pubsub):
 async def event_generator(redis_client: aioredis.Redis):
     from backend.app.core.database import USE_REDIS
     pubsub = None
-    local_queue = None
+    local_queue: asyncio.Queue[str] | None = None
     if USE_REDIS:
         try:
             pubsub = redis_client.pubsub()

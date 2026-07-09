@@ -21,7 +21,7 @@ router = APIRouter()
 
 TASKS_STREAM_CHANNEL = "tasks:stream"
 
-async def _stream_local_tasks(local_queue: asyncio.Queue):
+async def _stream_local_tasks(local_queue: asyncio.Queue[str]):
     while True:
         try:
             message_data = await asyncio.wait_for(local_queue.get(), timeout=1.0)
@@ -43,7 +43,7 @@ async def task_generator(redis_client: aioredis.Redis):
     from backend.app.core.database import USE_REDIS, local_pubsub_bus
     import asyncio
     pubsub = None
-    local_queue = None
+    local_queue: asyncio.Queue[str] | None = None
 
     if USE_REDIS:
         try:

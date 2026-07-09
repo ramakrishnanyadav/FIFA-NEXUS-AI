@@ -1,4 +1,9 @@
-﻿"""
+"""
+
+
+
+
+
 Targeted branch coverage tests for the four weakest modules.
 
 These tests exercise error paths, 404/500 branches, and offline fallback logic that
@@ -20,6 +25,7 @@ from backend.app.api.v1.recommendations import (
     get_recommendation_stats,
     list_recommendations,
 )
+from backend.app.ai.vector import retrieve_relevant_procedures, _embed_query
 from backend.app.api.v1.telemetry import ingest_telemetry
 from backend.app.schemas.schemas import (
     TaskUpdate,
@@ -672,3 +678,118 @@ async def test_chat_assistant_llm_post_route(monkeypatch):
 
     assert resp.intent == "llm_response"
     assert "Mocked LLM" in resp.response
+
+
+# ===========================================================================
+# VECTOR FALLBACK TESTS — vector.py (100% target coverage)
+# ===========================================================================
+# E402 hoisted to top
+
+
+# ---------------------------------------------------------------------------
+# 35. vector - Qdrant unavailable -> local fallback
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_retrieve_procedures_qdrant_unavailable():
+    with patch("backend.app.ai.vector.get_qdrant_client", side_effect=Exception("Qdrant offline")):
+        res = await retrieve_relevant_procedures("CROWD", uuid.uuid4(), "test query")
+    assert len(res) > 0
+    assert "SOP-CROWD" in res[0]
+
+
+# ---------------------------------------------------------------------------
+# 36. vector - Qdrant available -> OpenAI semantic success
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_retrieve_procedures_qdrant_semantic_success(monkeypatch):
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test-key")
+
+    mock_client = MagicMock()
+    mock_collection = MagicMock()
+    mock_collection.name = "stadium_procedures"
+    mock_client.get_collections.return_value.collections = [mock_collection]
+
+    mock_search = MagicMock()
+    mock_search.payload = {"text": "SOP-SEMANTIC: Semantic Match text"}
+    mock_client.search.return_value = [mock_search]
+
+    with patch("backend.app.ai.vector.get_qdrant_client", return_value=mock_client):
+        with patch("backend.app.ai.vector._embed_query", return_value=[0.1, 0.2, 0.3]):
+            res = await retrieve_relevant_procedures("CROWD", uuid.uuid4(), "test query")
+
+    assert len(res) == 1
+    assert "SOP-SEMANTIC" in res[0]
+
+
+# ---------------------------------------------------------------------------
+# 37. vector - Qdrant available -> OpenAI missing -> keyword scroll
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_retrieve_procedures_qdrant_scroll_fallback(monkeypatch):
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "")
+
+    mock_client = MagicMock()
+    mock_collection = MagicMock()
+    mock_collection.name = "stadium_procedures"
+    mock_client.get_collections.return_value.collections = [mock_collection]
+
+    mock_point = MagicMock()
+    mock_point.payload = {"text": "SOP-SCROLL: Scroll Match text"}
+    mock_client.scroll.return_value = ([mock_point], None)
+
+    with patch("backend.app.ai.vector.get_qdrant_client", return_value=mock_client):
+        res = await retrieve_relevant_procedures("CROWD", uuid.uuid4(), "test query")
+
+    assert len(res) == 1
+    assert "SOP-SCROLL" in res[0]
+
+
+# ---------------------------------------------------------------------------
+# 38. vector - Embedding exception -> fallback scroll succeeds
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_retrieve_procedures_embedding_exception_fallback(monkeypatch):
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test-key")
+
+    mock_client = MagicMock()
+    mock_collection = MagicMock()
+    mock_collection.name = "stadium_procedures"
+    mock_client.get_collections.return_value.collections = [mock_collection]
+
+    mock_point = MagicMock()
+    mock_point.payload = {"text": "SOP-SCROLL-FALLBACK: Scroll Match text"}
+    mock_client.scroll.return_value = ([mock_point], None)
+
+    with patch("backend.app.ai.vector.get_qdrant_client", return_value=mock_client):
+        with patch("backend.app.ai.vector._embed_query", side_effect=Exception("API error")):
+            res = await retrieve_relevant_procedures("CROWD", uuid.uuid4(), "test query")
+
+    assert len(res) == 1
+    assert "SOP-SCROLL-FALLBACK" in res[0]
+
+
+# ---------------------------------------------------------------------------
+# 39. vector - _embed_query success path
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_embed_query_success(monkeypatch):
+    from backend.app.core import config
+
+    monkeypatch.setattr(config.settings, "OPENAI_API_KEY", "sk-test-key")
+
+    mock_response = AsyncMock()
+    mock_response.data = [AsyncMock(embedding=[0.15, 0.25, 0.35])]
+
+    mock_client = AsyncMock()
+    mock_client.embeddings.create.return_value = mock_response
+
+    with patch("openai.AsyncOpenAI", return_value=mock_client):
+        res = await _embed_query("hello")
+
+    assert res == [0.15, 0.25, 0.35]

@@ -57,6 +57,8 @@ def _linear_fallback(req: PredictionRequest) -> tuple[int, int]:
 
 def _lgbm_predict(req: PredictionRequest) -> tuple[int, int]:
     """Use the trained LightGBM model for prediction."""
+    if _model is None:
+        raise RuntimeError("LightGBM model is not loaded.")
     recent = req.historical_occupancy_15m if req.historical_occupancy_15m else [0]
     current = recent[-1]
     trend = (recent[-1] - recent[0]) if len(recent) > 1 else 0

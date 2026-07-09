@@ -1,4 +1,4 @@
-﻿"""
+"""
 Assistant API Router.
 Handles natural language operator queries via the operations copilot chat interface.
 
