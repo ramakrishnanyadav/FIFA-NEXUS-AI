@@ -267,7 +267,7 @@ let sseSource = null;
             if (mapHeadingEl) mapHeadingEl.innerHTML = `<span>🏟️</span> ${dict.mapHeading}`;
             
             const metricsEl = document.getElementById('metrics-heading');
-            if (metricsEl && metricsEl.querySelector('span')) {
+            if (metricsEl?.querySelector('span')) {
                 metricsEl.querySelector('span').innerText = dict.realtimeState;
             }
             
@@ -275,12 +275,12 @@ let sseSource = null;
             if (simEl) simEl.innerText = dict.simHeading;
             
             const logElHeading = document.getElementById('log-heading');
-            if (logElHeading && logElHeading.querySelector('span')) {
+            if (logElHeading?.querySelector('span')) {
                 logElHeading.querySelector('span').innerText = dict.eventsLog;
             }
             
             const aiElHeading = document.getElementById('ai-heading');
-            if (aiElHeading && aiElHeading.querySelector('span')) {
+            if (aiElHeading?.querySelector('span')) {
                 aiElHeading.querySelector('span').innerText = dict.decisionSupport;
             }
         }
@@ -1134,7 +1134,7 @@ let sseSource = null;
 document.addEventListener("DOMContentLoaded", () => {
     // 1. SVG Map Interactive Zones
     document.querySelectorAll('[data-zone]').forEach(el => {
-        const zone = el.getAttribute('data-zone');
+        const zone = el.dataset.zone;
         el.addEventListener('click', () => {
             if (typeof selectZone === 'function') selectZone(zone);
         });
@@ -1145,7 +1145,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Telemetry Ingestion Buttons
     document.querySelectorAll('[data-telemetry]').forEach(btn => {
-        const count = parseInt(btn.getAttribute('data-telemetry'), 10);
+        const count = Number.parseInt(btn.dataset.telemetry, 10);
         btn.addEventListener('click', () => {
             if (typeof sendTelemetry === 'function') sendTelemetry(count);
         });
@@ -1194,14 +1194,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const target = event.target.closest('[data-approve], [data-reject], [data-evidence]');
         if (!target) return;
         
-        if (target.hasAttribute('data-approve')) {
-            const recId = target.getAttribute('data-approve');
+        if (target.dataset.approve !== undefined) {
+            const recId = target.dataset.approve;
             if (typeof approveRecommendation === 'function') approveRecommendation(recId);
-        } else if (target.hasAttribute('data-reject')) {
-            const recId = target.getAttribute('data-reject');
+        } else if (target.dataset.reject !== undefined) {
+            const recId = target.dataset.reject;
             if (typeof rejectAndRequestAlternative === 'function') rejectAndRequestAlternative(recId);
-        } else if (target.hasAttribute('data-evidence')) {
-            const recId = target.getAttribute('data-evidence');
+        } else if (target.dataset.evidence !== undefined) {
+            const recId = target.dataset.evidence;
             if (typeof viewEvidenceModal === 'function') viewEvidenceModal(recId);
         }
     });
@@ -1211,7 +1211,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const target = event.target.closest('[data-complete-task]');
         if (!target) return;
         
-        const taskId = target.getAttribute('data-complete-task');
+        const taskId = target.dataset.completeTask;
         if (typeof completeTask === 'function') completeTask(taskId);
     });
 });
