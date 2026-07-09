@@ -12,7 +12,8 @@ from sqlalchemy import (
     ForeignKey,
     Table,
     Text,
-    UniqueConstraint
+    UniqueConstraint,
+    Index
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
@@ -116,6 +117,9 @@ class Zone(Base):
 
 class ZoneOccupancySnapshot(Base):
     __tablename__ = "zone_occupancy_snapshots"
+    __table_args__ = (
+        Index("idx_snapshot_zone_recorded", "zone_id", "recorded_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=False, index=True)
@@ -128,6 +132,9 @@ class ZoneOccupancySnapshot(Base):
 
 class OperationalEvent(Base):
     __tablename__ = "operational_events"
+    __table_args__ = (
+        Index("idx_event_zone_received", "zone_id", "received_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="RESTRICT"), nullable=True, index=True)
@@ -146,13 +153,16 @@ class OperationalEvent(Base):
 
 class Recommendation(Base):
     __tablename__ = "recommendations"
+    __table_args__ = (
+        Index("idx_recommendation_status_generated", "validation_status", "generated_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     trigger_event_id = Column(UUID(as_uuid=True), ForeignKey("operational_events.id", ondelete="RESTRICT"), nullable=False)
     target_role = Column(String(50), nullable=False)
     candidate_actions = Column(JSONColumnType, nullable=False)
     expected_impact = Column(JSONColumnType, nullable=False)
-    validation_status = Column(String(30), default="GENERATED", nullable=False) # GENERATED, VALIDATED, APPROVED, etc.
+    validation_status = Column(String(30), default="GENERATED", nullable=False, index=True) # GENERATED, VALIDATED, APPROVED, etc.
     policy_flags = Column(ArrayColumnType, default=list, nullable=False)
 
     # AI Lineage
@@ -170,7 +180,7 @@ class Recommendation(Base):
     feedback_rating = Column(Integer, nullable=True)
     feedback_comments = Column(Text, nullable=True)
 
-    generated_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
+    generated_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False, index=True)
 
     # Relationships
     trigger_event = relationship("OperationalEvent", back_populates="recommendations")
@@ -179,14 +189,17 @@ class Recommendation(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("idx_task_status_created", "status", "created_at"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     recommendation_id = Column(UUID(as_uuid=True), ForeignKey("recommendations.id", ondelete="RESTRICT"), nullable=True)
     assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     assigned_role = Column(String(50), nullable=False) # VOLUNTEER, SECURITY
     details = Column(Text, nullable=False)
-    status = Column(String(20), default="PENDING", nullable=False) # PENDING, DISPATCHED, ACKNOWLEDGED, etc.
-    created_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
+    status = Column(String(20), default="PENDING", nullable=False, index=True) # PENDING, DISPATCHED, ACKNOWLEDGED, etc.
+    created_at = Column(DateTime(timezone=True), default=_now_utc, nullable=False, index=True)
     updated_at = Column(DateTime(timezone=True), default=_now_utc, onupdate=_now_utc, nullable=False)
 
     # Relationships
@@ -204,7 +217,7 @@ class AuditLog(Base):
     resource_id = Column(String(100), nullable=True)
     ip_address = Column(String(45), nullable=True)
     details = Column(JSONColumnType, nullable=False)
-    timestamp = Column(DateTime(timezone=True), default=_now_utc, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=_now_utc, nullable=False, index=True)
 
     # Relationships
     user = relationship("User", back_populates="audit_logs")
