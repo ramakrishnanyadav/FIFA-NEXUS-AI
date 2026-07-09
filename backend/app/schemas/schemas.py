@@ -3,6 +3,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, EmailStr, field_validator, field_serializer
 from uuid import UUID
 
+UTC_OFFSET_SUFFIX = "+00:00"
+
+def format_utc_datetime(dt: datetime) -> str:
+    """Formats datetime to timezone-aware UTC ISO format string with Z suffix."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.isoformat().replace(UTC_OFFSET_SUFFIX, "Z")
+
 # Shared Config
 class SchemaBase(BaseModel):
     model_config = {
@@ -98,9 +106,7 @@ class OperationalEventResponse(SchemaBase):
 
     @field_serializer("received_at")
     def serialize_received_at(self, dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        return dt.isoformat().replace("+00:00", "Z")
+        return format_utc_datetime(dt)
 
     model_config = {
         "json_schema_extra": {
@@ -139,9 +145,7 @@ class RecommendationResponse(SchemaBase):
 
     @field_serializer("generated_at")
     def serialize_generated_at(self, dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        return dt.isoformat().replace("+00:00", "Z")
+        return format_utc_datetime(dt)
 
     model_config = {
         "json_schema_extra": {
@@ -189,15 +193,11 @@ class TaskResponse(SchemaBase):
 
     @field_serializer("created_at")
     def serialize_created_at(self, dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        return dt.isoformat().replace("+00:00", "Z")
+        return format_utc_datetime(dt)
 
     @field_serializer("updated_at")
     def serialize_updated_at(self, dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        return dt.isoformat().replace("+00:00", "Z")
+        return format_utc_datetime(dt)
 
     model_config = {
         "json_schema_extra": {
