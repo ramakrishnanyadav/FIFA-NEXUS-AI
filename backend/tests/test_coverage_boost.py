@@ -171,7 +171,7 @@ async def test_run_reasoning_agent_failover_to_heuristic():
         output = await run_reasoning_agent(context, "VOLUNTEER")
         assert output["model_version"] == "heuristic-fallback:v2.1"
         assert len(output["candidate_actions"]) > 0
-        assert output["confidence"] == 0.85
+        assert output["confidence"] == pytest.approx(0.85)
 
 
 # ---------------------------------------------------------------------------

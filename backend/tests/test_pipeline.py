@@ -184,7 +184,7 @@ async def test_generate_and_validate_recommendations_flow():
         
         assert isinstance(rec, Recommendation)
         assert rec.validation_status == "VALIDATED"
-        assert rec.confidence == 0.9
+        assert rec.confidence == pytest.approx(0.9)
         assert rec.model_version == "gpt-4o-mini"
         assert "co2_saved_kg" in rec.expected_impact
         assert db_mock.add.called
