@@ -8,7 +8,7 @@ geoalchemy2==0.17.0
 alembic==1.14.0
 redis==5.2.1
 qdrant-client==1.12.1
-openai==1.58.1
+openai==2.45.0
 lightgbm==4.5.0
 scikit-learn==1.6.0
 httpx==0.28.1
